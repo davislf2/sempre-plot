@@ -36,10 +36,13 @@ public class VegaFeatureComputer implements FeatureComputer {
   private void extractDefaultFeatures(Example ex, Derivation deriv) {
     VegaJsonContextValue context = (VegaJsonContextValue) ex.context;
     // favor one type over another when context is empty
-    if (deriv.isRootCat() && !context.getJsonNode().has("$schema")) {
+    if (deriv.isRootCat()) {
       String mode = Formulas.getString(((ActionFormula)deriv.formula).args.get(0));
-      if (mode.equals("set")) {
+
+      if (!context.getJsonNode().has("$schema") && mode.equals("set")) {
         deriv.addFeature("defaults", "setWithoutContext", 1);
+      } else if (context.getJsonNode().has("$schema") && mode.equals("init")) {
+        deriv.addFeature("defaults", "initWithContext", 1);
       }
     }
 

@@ -176,12 +176,9 @@ public class JsonMaster extends Master {
       // TODO
 
     } else if (command.equals("log")) {
-      /*
-
+      /* Used to log information that is not acted upon
+       * Usage: ["log", object]
        */
-
-    } else if(command.equals("fetch")) {
-
     } else {
       LogInfo.log("Invalid command: " + args);
     }
