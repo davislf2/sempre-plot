@@ -8,4 +8,4 @@ cl work "$(cat cl_worksheet.txt)"
 host="$1"
 shift
 flags="$@"
-cl run :fig :lib :libsempre :module-classes.txt :plot :plot-data "plot/run @mode=plot -server false $flags" --request-cpus 1 --request-queue "host=${host}" -n sempre-plot -d "sempre-plot, ${flags}"
+cl run :fig :lib :libsempre :module-classes.txt :plot :plot-data "plot/run @mode=plot -server false $flags; cp -L state/execs/0.exec/params params" --request-cpus 1 --request-queue "host=${host}" -n sempre-plot -d "sempre-plot, ${flags}"
