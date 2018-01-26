@@ -142,10 +142,12 @@ public class JsonFn extends SemanticFn {
 
     private Double parseNumber(String string) {
       try {
-        return Double.valueOf(string);
+        Double val = Double.valueOf(string);
+        if (!val.isNaN() && !val.isInfinite()) return val;
       } catch (NumberFormatException e) {
         return null;
       }
+      return null;
     }
 
     private Boolean parseBoolean(String string) {
