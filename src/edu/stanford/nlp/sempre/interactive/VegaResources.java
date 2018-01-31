@@ -3,11 +3,7 @@ package edu.stanford.nlp.sempre.interactive;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.Sets;
@@ -77,24 +73,19 @@ public class VegaResources {
       List<JsonSchema> allDescendants = vegaSchema.descendants();
       descendants = allDescendants.stream().filter(s -> s.node().has("type")).collect(Collectors.toList());
       LogInfo.logs("Got %d descendants, %d typed", allDescendants.size(), descendants.size());
+      Json.prettyWriteValueHard(new File(savePath.toString()+".nodes.json"),
+        descendants.stream().map(t -> t.node()).collect(Collectors.toList()));
 
       filteredPaths = allSimplePaths(descendants);
       LogInfo.logs("Got %d distinct simple path not containing %s", filteredPaths.size(), opts.excludedPaths);
       allPathsMatcher = new VegaLitePathMatcher(filteredPaths);
-      Json.prettyWriteValueHard(new File(savePath.toString()+".path_elements.json"),
-          filteredPaths.stream()
-          .collect(Collectors.toSet()).stream().collect(Collectors.toList()) );
+      Json.prettyWriteValueHard(new File(savePath.toString()+".simplePaths.json"), filteredPaths);
 
       // generate valueToTypes and valueToSet, for enum types
       generateValueMaps();
       LogInfo.logs("gathering valueToTypes: %d distinct enum values", enumValueToTypes.size());
       Json.prettyWriteValueHard(new File(savePath.toString()+".enums.json"),
-          enumValueToTypes.keySet().stream().collect(Collectors.toList())
-      );
-      Json.prettyWriteValueHard(new File(savePath.toString()+".enums-kv.json"),
-          enumValueToTypes.entrySet().stream().map(e -> {
-            return Lists.newArrayList(e.getKey(), e.getValue().stream().collect(Collectors.toList()));
-          }).collect(Collectors.toList())
+        enumValueToTypes.keySet().stream().collect(Collectors.toList())
       );
 
       if (!Strings.isNullOrEmpty(opts.colorFile)) {
@@ -117,13 +108,12 @@ public class VegaResources {
   }
 
   private List<List<String>> allSimplePaths(List<JsonSchema> descendents) {
-    Set<List<String>> simplePaths = descendents.stream().map(s -> s.simplePath()).collect(Collectors.toSet());
+    LinkedHashSet<List<String>> simplePaths = descendents.stream()
+      .map(s -> s.simplePath()).collect(Collectors.toCollection(LinkedHashSet::new));
     LogInfo.logs("Got %d distinct simple paths", simplePaths.size());
 
-    Set<List<String>> filteredPaths = descendents.stream().map(s -> s.simplePath())
-        .filter(p -> p.stream().allMatch(s -> !opts.excludedPaths.contains(s)))
-        .collect(Collectors.toSet());
-    return Lists.newArrayList(filteredPaths);
+    return simplePaths.stream().filter(p -> p.stream().allMatch(s -> !opts.excludedPaths.contains(s)))
+        .collect(Collectors.toList());
   }
 
   private void generateValueMaps() {
@@ -158,26 +148,21 @@ public class VegaResources {
         if (schemaType.equals("string") && (last.endsWith("color") || last.endsWith("Color")
             || last.equals("fill")
             || last.equals("stroke") || last.equals("background"))) {
-          if (valueType.equals("color"))
-            return true;
-          else return false;
+          return valueType.equals("color");
         }
 
         if (schemaType.equals("string") && last.equals("field")) {
-          if (valueType.equals("field"))
-            return true;
-          else return false;
+          return valueType.equals("field");
         }
 
         if (schemaType.equals("string") && schema.isEnum()) {
-          if (schema.enums().contains(stringValue))
-            return true;
-          else return false;
+          return schema.enums().contains(stringValue);
         }
 
         if (valueType.equals(schemaType)) {
           return true;
         }
+
         if (schemaType.equals(JsonSchema.NOTYPE))
           throw new RuntimeException("JsonFn: schema has no type: " + schema);
       }

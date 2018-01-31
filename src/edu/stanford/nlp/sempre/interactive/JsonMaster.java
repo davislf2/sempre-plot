@@ -1,5 +1,6 @@
 package edu.stanford.nlp.sempre.interactive;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -88,6 +89,8 @@ public class JsonMaster extends Master {
        *     "utterance": utterance (string),
        *     "context": Vega-lite context (object),
        *     "schema": schema map (object),
+       *     "random": randomize the order (true | false),
+       *     "amount": number of candidates to request (integer)
        *   }]
        *
        * - If context is an empty object
@@ -100,19 +103,22 @@ public class JsonMaster extends Master {
 
       // Create the example
       Example ex = exampleFromUtterance(utt, session);
-      if ("random".equals(utt)) {
-        // For debugging the "random" command from the interface
-        VegaRandomizer randomizer = new VegaRandomizer(ex, builder);
-        response.ex = randomizer.generateModification(50);
-      } else {
-        builder.parser.parse(builder.params, ex, false);
-        stats.size(ex.predDerivations != null ? ex.predDerivations.size() : 0);
-        stats.status(InteractiveUtils.getParseStatus(ex));
-        session.updateContext();
-        LogInfo.logs("parse stats: %s", response.stats);
-        response.ex = ex;
+      builder.parser.parse(builder.params, ex, false);
+      stats.size(ex.predDerivations != null ? ex.predDerivations.size() : 0);
+      stats.status(InteractiveUtils.getParseStatus(ex));
+      session.updateContext();
+      LogInfo.logs("parse stats: %s", response.stats);
+
+      if (kv.containsKey("random") && (boolean)kv.get("random")) {
+        Collections.shuffle(ex.predDerivations);
       }
 
+      if (kv.containsKey("amount")) {
+        int amount = (int) kv.get("amount");
+        int size = ex.predDerivations.size();
+        ex.predDerivations = ex.predDerivations.subList(0, amount > size ? size : amount);
+      }
+      response.ex = ex;
     } else if (command.equals("random")) {
       /* Generate random derivations
        *
@@ -160,7 +166,9 @@ public class JsonMaster extends Master {
       ex.targetValue = new JsonValue(targetValue);
       ex.context = VegaJsonContextValue.fromClientRequest(kv);
       builder.parser.parse(builder.params, ex, true);
-      learner.onlineLearnExample(ex);
+
+      if (Master.opts.onlineLearnExamples)
+        learner.onlineLearnExample(ex);
 
     } else if (command.equals("reject")) {
       /* Reject a plot.

@@ -1,12 +1,6 @@
 package edu.stanford.nlp.sempre.interactive;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.net.HttpCookie;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -69,12 +63,14 @@ public class InteractiveServer {
     public int maxExecutionTime = 10; // in seconds
     @Option(gloss="if the query is already in json, then parse it instead of storing an escaped string")
     public boolean isJsonQuery = false;
+    @Option public String basePath = "plot-out";
   }
 
   public static Options opts = new Options();
   private static Object queryLogLock = new Object();
   private static Object responseLogLock = new Object();
   private static AtomicLong queryCounter = new AtomicLong();
+  private static String startTime = LocalDateTime.now().toString();
   Master master;
 
   class Handler implements HttpHandler {
@@ -123,9 +119,12 @@ public class InteractiveServer {
 
       for (String s : inputParams.split("&")) {
         String[] kv = s.split("=", 2);
+
         try {
           String key = URLDecoder.decode(kv[0], "UTF-8");
-          String value = URLDecoder.decode(kv[1], "UTF-8");
+          String value = null;
+          if (kv.length > 1)
+            value = URLDecoder.decode(kv[1], "UTF-8");
           // logs("%s => %s", key, value);
           reqParams.put(key, value);
         } catch (UnsupportedEncodingException e) {
@@ -151,9 +150,24 @@ public class InteractiveServer {
       if (uriPath.equals("/sempre")) {
         handleQuery(sessionId);
       } else {
-        // getFile(opts.basePath + uriPath); security
+        getFile(opts.basePath + uriPath);
       }
       exchange.close();
+    }
+
+    void getFile(String path) throws IOException {
+      if (!new File(path).exists()) {
+        LogInfo.logs("File doesn't exist: %s", path);
+        exchange.sendResponseHeaders(404, 0);  // File not found
+        return;
+      }
+
+      setHeaders(getMimeType(path));
+      if (opts.verbose >= 2)
+        LogInfo.logs("Sending %s", path);
+      OutputStream out = new BufferedOutputStream(exchange.getResponseBody());
+      InputStream in = new FileInputStream(path);
+      IOUtils.copy(in, out);
     }
 
     String getMimeType(String path) {
@@ -190,7 +204,6 @@ public class InteractiveServer {
         List<Object> items = new ArrayList<Object>();
         json.put("candidates", items);
         List<Derivation> allCandidates = response.getExample().getPredDerivations();
-        Derivation.sortByScore(allCandidates);
         if (allCandidates != null) {
           if (allCandidates.size() > InteractiveServer.opts.maxCandidates) {
             response.lines.add(String.format("Exceeded max options: (current: %d / max: %d) ", allCandidates.size(),
@@ -272,6 +285,7 @@ public class InteractiveServer {
       synchronized (queryLogLock) { // write the query log
         Map<String, Object> jsonMap = new LinkedHashMap<>();
         jsonMap.put("count", queryNumber);
+        jsonMap.put("startTime", startTime);
         if (opts.isJsonQuery)
           jsonMap.put("q", Json.readValueHard(query, ArrayList.class));
         else
