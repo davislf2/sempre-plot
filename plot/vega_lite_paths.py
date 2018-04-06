@@ -135,28 +135,40 @@ def write_all_paths():
 
     print(nodes)
 
+    nodes = sorted(nodes)
+    if args.filter:
+        nodes = [node for node in nodes if all([p not in args.filter for p in node.path])]
+
     with open(args.out_path + '.csv', 'w') as csvfile:
         fieldnames = ['id', 'full_path', 'description']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
 
-        nodes = sorted(nodes)
-        if args.filter:
-            nodes = [node for node in nodes if all([p not in args.filter for p in node.path])]
         for node in nodes:
             print(node)
             writer.writerow({'id': node.pathstr})
 write_all_paths()
+
+dependencies = {}
 
 def expand(node):
     tree = {}
     tree['name'] = node.name
     tree['description'] = node.description
     child_nodes = real_children(node)
+    filtered_children = [c for c in child_nodes if all([p not in args.filter for p in c.path])]
+    if node.name in dependencies:
+        dependencies[node.name].update([c.name for c in filtered_children])
+    else:
+        dependencies[node.name] = set([c.name for c in filtered_children])
+
     if len(child_nodes) == 0:
         return tree
-    tree['children'] = [expand(c) for c in child_nodes if all([p not in args.filter for p in c.path])]
+    tree['children'] = [expand(c) for c in filtered_children]
     return tree
 
 with open(args.out_path + '.json', 'w') as jsonfile:
     json.dump(expand(Node(schema, [])), jsonfile)
+
+with open(args.out_path + '.dep.json', 'w') as jsonfile:
+    json.dump([{"name": k, "imports": list(v)} for k,v in dependencies.items()], jsonfile)
