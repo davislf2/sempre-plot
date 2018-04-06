@@ -16,7 +16,7 @@ Args:
 
 import json, csv
 from jsonschema import RefResolver
-from collections import deque, namedtuple
+from collections import deque, namedtuple, ordereddict
 import argparse
 
 
@@ -149,7 +149,7 @@ def write_all_paths():
             writer.writerow({'id': node.pathstr})
 write_all_paths()
 
-dependencies = {}
+dependencies = OrderedDict()
 
 def expand(node):
     tree = {}
