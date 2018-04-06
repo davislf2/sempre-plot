@@ -1,3 +1,5 @@
+#!/usr/bin/env python3.6
+
 """Script to compute all possible paths through a JSON object conforming to the Vega-lite specification.
 
 Args:
@@ -12,7 +14,7 @@ Args:
 - TODO: need to handle circular references properly
 """
 
-import json
+import json, csv
 from jsonschema import RefResolver
 from collections import deque, namedtuple
 import argparse
@@ -21,9 +23,8 @@ import argparse
 # parse command line args
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument('--schema_path', default='vega-lite-v2.json')
-arg_parser.add_argument('--out_path', default='vega-lite-paths.txt')
-arg_parser.add_argument('--filter', default='items vconcat hconcat layer spec repeat')
-arg_parser.add_argument('--descriptions', default='False') #Make arg 'True' if want the descriptions
+arg_parser.add_argument('--out_path', default='visualize/data/vegalite')
+arg_parser.add_argument('--filter', default=('vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'data', 'facet'))
 
 args = arg_parser.parse_args()
 
@@ -35,17 +36,38 @@ resolve = lambda ref: resolver.resolve(ref)[1]
 
 
 # represents a node in the schema
-class Node(namedtuple('Node', ['schema', 'full_path', 'description'])):
+class Node(namedtuple('Node', ['schema', 'full_path'])):
 
     @property
     def path(self):
         # remove "anyOf"s and references
-        return tuple(key for key in self.full_path if not (key.startswith("anyOf[") or key.startswith("#/")))
+        return ('vegalite',) + tuple(key for key in self.full_path if not (key.startswith("anyOf[") or key.startswith("#/") or key=='items'))
+    @property
+    def pathstr(self):
+        return '.'.join(self.path)
 
     @property
-    def definition(self):
-	    return self.description
+    def description(self):
+        if "description" in self.schema:
+            return self.schema["description"].replace(u'\xa0', ' ')
+        else:
+            return ''
 
+    @property
+    def name(self):
+        return self.path[-1]
+
+    def __hash__(self):
+        return hash(self.path)
+
+    def __eq__(self, other):
+        return self.path == other.path
+
+    def __lt__(self, other):
+        return'.'.join(self.full_path) < '.'.join(other.full_path)
+
+    def __repr__(self):
+        return '.'.join(self.path) + '\t' + '.'.join(self.full_path)
 
 def children(node):
     """Return the children of a given node.
@@ -61,80 +83,80 @@ def children(node):
 
     if "anyOf" in schema:
         for i, s in enumerate(schema["anyOf"]):
-	        d = "None"
-	        if "description" in s and (args.descriptions == 'True'):
-	            d = s["description"]
-	        child_nodes.append(Node(s, full_path + ["anyOf[{}]".format(i)], d))
-
+            child_nodes.append(Node(s, full_path + ["anyOf[{}]".format(i)]))
 
     # jump through reference
     if "$ref" in schema:
         ref = schema["$ref"]
-
         # avoid circular references
         if not (ref in full_path):
-	        d = "None"
- 	        if "description" in resolve(ref) and (args.descriptions == 'True'):
-	            d = resolve(ref)["description"]
-	        child_nodes.append(Node(resolve(ref), full_path + [ref], d))
-
+            child_nodes.append(Node(resolve(ref), full_path + [ref]))
 
     # arrays have "items"
     if "items" in schema:
-	    d = "None"
-	    if "description" in schema["items"] and (args.descriptions == 'True'):
-	        d = schema["items"]["description"]
-	    child_nodes.append(Node(schema["items"], full_path + ["items"], d))
-
+        child_nodes.append(Node(schema["items"], full_path + ["items"]))
 
     # objects have "properties"
     if "properties" in schema:
         for key, s in sorted(schema["properties"].items()):
-	        d = "None"
-	        if "description" in s and (args.descriptions == 'True'):
-	            d=s["description"]
-	        child_nodes.append(Node(s, full_path + [key], d))
+            child_nodes.append(Node(s, full_path + [key]))
 
+    return child_nodes
+
+def real_children(node):
+    """
+    changes need to happen in real path, and not just full path
+    """
+
+    queue = deque(children(node))
+    child_nodes = set()
+
+    while len(queue) > 0:
+        c = queue.pop()
+        if c.path != node.path:
+            child_nodes.add(c)
+        else:
+            queue.extend(children(c))
 
     return child_nodes
 
 
 # explore all paths, DFS
-print 'Exploring paths'
+def write_all_paths():
+    nodes = set()
+    seed = Node(schema, [])
+    queue = deque([seed])
 
-paths = set()
-seed = Node(schema, [], "None")
-queue = deque([seed])
+    while len(queue) > 0:
+        state = queue.pop()
+        nodes.add(state)
+        new_states = children(state)
+        queue.extend(reversed(new_states))
 
-while len(queue) > 0:
-    state = queue.pop()
-    if args.descriptions == 'True':
-        paths.add(state.path+tuple(" ")+tuple(state.definition))
-    else:
-	    paths.add(state.path+tuple(" "))
-    new_states = children(state)
-    for state in reversed(new_states):
-        queue.append(state)
+    print(nodes)
 
-# remove empty path
-if args.descriptions == 'True':
-    paths.remove(tuple(" ")+tuple("None"))
-else:
-	paths.remove(tuple(" "))
+    with open(args.out_path + '.csv', 'w') as csvfile:
+        fieldnames = ['id', 'full_path', 'description']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
 
-# write paths to file
-import re
-with open(args.out_path, 'w') as f:
-    paths = sorted(paths)
-    if args.filter:
-	    notallowed = args.filter.split(' ');
-	    paths = [ps for ps in sorted(paths) if all([p not in notallowed for p in ps])]
-    for path in paths:
-	    path_list = list(path)
-	    file_path_index = path_list.index(" ")
-	    file_path = re.sub(r"[^A-Za-z-:,. \t]+", '', '\t'.join(path_list[:file_path_index]).encode('utf8'))
-	    line = file_path
-	    if args.descriptions == 'True':
-	        definition = re.sub(r"[^A-Za-z-:,. \t]+", '', ''.join(path_list[file_path_index:]).encode('utf8'))
-	        line = line + '\tDefinition: ' + definition
-	    f.write(line+'\n')
+        nodes = sorted(nodes)
+        if args.filter:
+            nodes = [node for node in nodes if all([p not in args.filter for p in node.path])]
+        for node in nodes:
+            print(node)
+            writer.writerow({'id': node.pathstr})
+write_all_paths()
+
+def expand(node):
+    tree = {}
+    tree['name'] = node.name
+    tree['description'] = node.description
+    child_nodes = real_children(node)
+    if len(child_nodes) == 0:
+        return tree
+    tree['children'] = [expand(c) for c in child_nodes if all([p not in args.filter for p in c.path])]
+    return tree
+
+with open(args.out_path + '.json', 'w') as jsonfile:
+    json.dump(expand(Node(schema, [])), jsonfile)
