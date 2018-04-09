@@ -16,7 +16,7 @@ Args:
 
 import json, csv
 from jsonschema import RefResolver
-from collections import deque, namedtuple, ordereddict
+from collections import deque, namedtuple, OrderedDict
 import argparse
 
 
