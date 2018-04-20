@@ -171,8 +171,10 @@ def expand(node):
     update_set(dependencies, node.full_path_nice, [c.pathstr for c in filtered_children])
 
     if len(child_nodes) == 0:
+        tree['size'] = 1
         return tree
     tree['children'] = [expand(c) for c in filtered_children]
+    tree['size'] = sum(c['size'] for c in tree['children'])
     return tree
 
 
