@@ -47,6 +47,10 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
         return '.'.join(self.path)
 
     @property
+    def full_path_nice(self):
+        return tuple(key if not key.startswith('#') else key[key.rfind('/'):] for key in self.full_path if not (key.startswith("anyOf[") or key=='items'))
+
+    @property
     def description(self):
         if "description" in self.schema:
             return self.schema["description"].replace(u'\xa0', ' ')
@@ -151,21 +155,26 @@ write_all_paths()
 
 dependencies = OrderedDict()
 
+def update_set(d, k, v):
+    if k in d:
+        d[k].update(v)
+    else:
+        d[k] = set(v)
+
 def expand(node):
     tree = {}
     tree['name'] = node.name
     tree['description'] = node.description
     child_nodes = real_children(node)
     filtered_children = [c for c in child_nodes if all([p not in args.filter for p in c.path])]
-    if node.name in dependencies:
-        dependencies[node.name].update([c.name for c in filtered_children])
-    else:
-        dependencies[node.name] = set([c.name for c in filtered_children])
+
+    update_set(dependencies, node.full_path_nice, [c.pathstr for c in filtered_children])
 
     if len(child_nodes) == 0:
         return tree
     tree['children'] = [expand(c) for c in filtered_children]
     return tree
+
 
 with open(args.out_path + '.json', 'w') as jsonfile:
     json.dump(expand(Node(schema, [])), jsonfile)
