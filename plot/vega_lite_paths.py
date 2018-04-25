@@ -168,7 +168,7 @@ def expand(node):
     child_nodes = real_children(node)
     filtered_children = [c for c in child_nodes if all([p not in args.filter for p in c.path])]
 
-    update_set(dependencies, node.full_path_nice, [c.pathstr for c in filtered_children])
+    update_set(dependencies, node.pathstr, [c.pathstr for c in filtered_children])
 
     if len(child_nodes) == 0:
         tree['size'] = 1
