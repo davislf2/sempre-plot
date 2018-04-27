@@ -77,14 +77,19 @@ var nodes = {};
 // });
 //
 // console.log(links)
-
+function last(str) {
+  if (str.lastIndexOf('.')==-1) return str
+  return str.substr(str.lastIndexOf('.')+1)
+}
 d3.json("data/vegalite.dep.json", function(classes) {
   // classes = classes.slice(0,10)
   var nodes = {}
   links = []
   classes.forEach(function(node) {
+    node.name = last(node.name)
     nodes[node.name] = nodes[node.name] || {"name": node.name}
     node.imports.forEach(function(child) {
+      child = last(child)
       target = nodes[child] || (nodes[child] = {"name": child})
       link = {source: nodes[node.name], target: target, type: "suit"}
       links.push(link)
@@ -141,7 +146,7 @@ d3.json("data/vegalite.dep.json", function(classes) {
     .enter().append("text")
       .attr("x", 8)
       .attr("y", ".31em")
-      .text(function(d) { return d.name.substr(d.name.lastIndexOf('.')); });
+      .text(function(d) { return d.name });
 
   // Use elliptical arc path segments to doubly-encode directionality.
   function tick() {
