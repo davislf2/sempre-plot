@@ -1,49 +1,29 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
 <style>
-
+.node circle {
+  fill: #999;
+}
+.node text {
+  font: 10px sans-serif;
+}
+.node--internal circle {
+  fill: #555;
+}
+.node--internal text {
+  font: 10px sans-serif;
+}
 .link {
   fill: none;
-  stroke: #666;
+  stroke: #555;
+  stroke-opacity: 0.4;
   stroke-width: 1.5px;
 }
-
-#licensing {
-  fill: green;
-}
-
-.link.licensing {
-  stroke: green;
-}
-
-.link.resolved {
-  stroke-dasharray: 0,2 1;
-}
-
-circle {
-  fill: #ccc;
-  stroke: #333;
-  stroke-width: 1.5px;
-}
-
-text {
-  font: 10px sans-serif;
-  pointer-events: none;
-  text-shadow: 0 1px 0 #fff, 1px 0 0 #fff, 0 -1px 0 #fff, -1px 0 0 #fff;
-}
-
 </style>
 <body>
 <script src="//d3js.org/d3.v3.min.js"></script>
 <script>
-// http://blog.thomsonreuters.com/index.php/mobile-patent-suits-graphic-of-the-day/
-// Compute the distinct nodes from the links.
-// links.forEach(function(link) {
-//   link.source = nodes[link.source] || (nodes[link.source] = {name: link.source});
-//   link.target = nodes[link.target] || (nodes[link.target] = {name: link.target});
-// });
-//
-// console.log(links)
+
 function last(str) {
   if (str.lastIndexOf('.')==-1) return str
   return str.substr(str.lastIndexOf('.')+1)
@@ -51,91 +31,32 @@ function last(str) {
 d3.json("data/vegalite.dep.json", function(classes) {
   // classes = classes.slice(0,10)
   var nodes = {}
-  var nodeList = []
   links = []
   classes.forEach(function(node) {
-    node.name = last(node.name)
-    nodes[node.name] = nodes[node.name] || {"name": node.name, "x": 500, "y": 500, "index": 1, "weight": 1}
-    nodeList.push(nodes[node.name])
-    node.imports.forEach(function(child) {
-      child = last(child)
-      target = nodes[child] || (nodes[child] = {"name": child})
-      link = {source: nodes[node.name], target: target, type: "suit"}
-      links.push(link)
-    })
+    nodes[node.name] = nodes[node.name] || {"name": node.name, "x": 100 * node.depth, "y": 50 + 25 * node.height + 100*Math.random()}
   })
 
-  console.log(links)
-  console.log(nodes)
+  nodeList = Object.getOwnPropertyNames(nodes).map(function(k) {return nodes[k];})
 
-  var width = 2000,
-      height = 1000;
-
-  var force = d3.layout.force()
-      .nodes(d3.values(nodes))
-      .links(links)
-      .size([width, height])
-      .linkDistance(60)
-      .charge(-300)
-      // .on("tick", tick)
-      // .start();
+  var width = 1200,
+      height = 1800;
 
   var svg = d3.select("body").append("svg")
       .attr("width", width)
       .attr("height", height);
 
-  // Per-type markers, as they don't inherit styles.
-  svg.append("defs").selectAll("marker")
-      .data(["suit", "licensing", "resolved"])
-    .enter().append("marker")
-      .attr("id", function(d) { return d; })
-      .attr("viewBox", "0 -5 10 10")
-      .attr("refX", 15)
-      .attr("refY", -1.5)
-      .attr("markerWidth", 6)
-      .attr("markerHeight", 6)
-      .attr("orient", "auto")
-    .append("path")
-      .attr("d", "M0,-5L10,0L0,5");
+  g = svg.append("g").attr("transform", "translate(40,0)");
+  var node = g.selectAll(".node")
+    .data(nodeList)
+    .enter().append("g")
+      .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
+      .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
 
-  var path = svg.append("g").selectAll("path")
-      .data(force.links())
-    .enter().append("path")
-      .attr("class", function(d) { return "link " + d.type; })
-      .attr("marker-end", function(d) { return "url(#" + d.type + ")"; });
-
-  console.log(nodeList, force.nodes())
-  var circle = svg.append("g").selectAll("circle")
-      .data(links)
-    .enter().append("circle")
-      .attr("r", 6)
-      .call(force.drag);
-
-  var text = svg.append("g").selectAll("text")
-      .data(nodeList)
-    .enter().append("text")
-      .attr("x", 8)
-      .attr("y", ".31em")
-      .text(function(d) { return d.name });
-
-  // Use elliptical arc path segments to doubly-encode directionality.
-  function tick() {
-    path.attr("d", linkArc);
-    circle.attr("transform", transform);
-    text.attr("transform", transform);
-  }
-  tick()
-
-  function linkArc(d) {
-    var dx = d.target.x - d.source.x,
-        dy = d.target.y - d.source.y,
-        dr = Math.sqrt(dx * dx + dy * dy);
-    return "M" + d.source.x + "," + d.source.y + "A" + 0 + "," + 0 + " 0 0,1 " + d.target.x + "," + d.target.y;
-  }
-
-  function transform(d) {
-    return "translate(" + d.x + "," + d.y + ")";
-  }
-
+  node.append("circle")
+      .attr("r", 2.5);
+  node.append("text")
+      .attr("dy", 3)
+      .attr("x", function(d) { return 8; })
+      .text(function(d) { return d.name; });
 })
 </script>

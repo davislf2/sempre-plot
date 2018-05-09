@@ -155,31 +155,29 @@ write_all_paths()
 
 dependencies = OrderedDict()
 
-def update_set(d, k, v):
-    if k in d:
-        d[k].update(v)
-    else:
-        d[k] = set(v)
 
-def expand(node):
+def expand(node, depth, height):
     tree = {}
-    tree['name'] = node.name
+    tree['path'] = node.pathstr
     tree['description'] = node.description
+    tree['depth'] = depth
+    tree['height'] = height
     child_nodes = real_children(node)
-    filtered_children = [c for c in child_nodes if all([p not in args.filter for p in c.path])]
-
-    update_set(dependencies, node.pathstr, [c.pathstr for c in filtered_children])
-
+    dependencies[node.pathstr] = tree
     if len(child_nodes) == 0:
         tree['size'] = 1
         return tree
-    tree['children'] = [expand(c) for c in filtered_children]
+    tree['y'] = len(child_nodes)
+
+    filtered_children = [c for c in child_nodes if all([p not in args.filter for p in c.path])]
+    tree['children'] = [expand(c, depth+1, height+h) for h,c in enumerate(filtered_children)]
     tree['size'] = sum(c['size'] for c in tree['children'])
+
     return tree
 
 
 with open(args.out_path + '.json', 'w') as jsonfile:
-    json.dump(expand(Node(schema, [])), jsonfile)
+    json.dump(expand(Node(schema, []), 0, 0), jsonfile)
 
 with open(args.out_path + '.dep.json', 'w') as jsonfile:
-    json.dump([{"name": k, "imports": list(v)} for k,v in dependencies.items()], jsonfile)
+    json.dump([{"name": k, "depth": node['depth'], "height": node['height'], 'path': node['path']} for k,node in dependencies.items()], jsonfile)
