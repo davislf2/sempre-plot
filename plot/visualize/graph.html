@@ -14,9 +14,9 @@
   font: 10px sans-serif;
 }
 .link {
-  fill: none;
+  fill: solid;
   stroke: #555;
-  stroke-opacity: 0.4;
+  stroke-opacity: 0.8;
   stroke-width: 1.5px;
 }
 </style>
@@ -33,13 +33,14 @@ d3.json("data/vegalite.dep.json", function(classes) {
   var nodes = {}
   links = []
   classes.forEach(function(node) {
-    nodes[node.name] = nodes[node.name] || {"name": node.name, "x": 100 * node.depth, "y": 50 + 25 * node.height + 100*Math.random()}
+    id = node.id.join(".")
+    nodes[id] = nodes[id] || {"id": id , "x": 100 * node.depth, "y": 25 + 4800*Math.random()}
   })
 
   nodeList = Object.getOwnPropertyNames(nodes).map(function(k) {return nodes[k];})
 
   var width = 1200,
-      height = 1800;
+      height = 4800;
 
   var svg = d3.select("body").append("svg")
       .attr("width", width)
@@ -52,11 +53,18 @@ d3.json("data/vegalite.dep.json", function(classes) {
       .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
 
+  node.append("line")
+    .attr("class", "link")
+    .attr('x1', d => 0)
+    .attr('y1', d => 0)
+    .attr('x2', d => -100)
+    .attr('y2', d => 0)
+
   node.append("circle")
       .attr("r", 2.5);
   node.append("text")
       .attr("dy", 3)
       .attr("x", function(d) { return 8; })
-      .text(function(d) { return d.name; });
+      .text(function(d) { return d.id; });
 })
 </script>
