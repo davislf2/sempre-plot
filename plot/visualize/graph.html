@@ -28,43 +28,55 @@ function last(str) {
   if (str.lastIndexOf('.')==-1) return str
   return str.substr(str.lastIndexOf('.')+1)
 }
-d3.json("data/vegalite.dep.json", function(classes) {
+d3.json("data/vegalite.graph.json", function(nodes) {
   // classes = classes.slice(0,10)
-  var nodes = {}
-  links = []
-  classes.forEach(function(node) {
-    id = node.id.join(".")
-    nodes[id] = nodes[id] || {"id": id , "x": 100 * node.depth, "y": 25 + 4800*Math.random()}
+  var keyToNode = {}
+  nodes.forEach(function(node) {
+    node.depth = node.path.length
+    node.x = node.depth * 100
+    node.y = Math.random() * 1200
+    keyToNode[node.key] = node
   })
 
-  nodeList = Object.getOwnPropertyNames(nodes).map(function(k) {return nodes[k];})
+  links = []
+  nodes.forEach(function(node) {
+     node.children.forEach(function(child){
+       link = {'source': node, target: keyToNode[child]}
+       console.log(link)
+       links.push(link)
+     })
+  })
 
   var width = 1200,
-      height = 4800;
+      height = 1200;
 
   var svg = d3.select("body").append("svg")
       .attr("width", width)
       .attr("height", height);
 
   g = svg.append("g").attr("transform", "translate(40,0)");
+
+  var path = g.selectAll("path")
+    .data(links)
+  .enter().append("line")
+    .attr("class", "link")
+    .attr('x1', d => d.source.x)
+    .attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x)
+    .attr('y2', d => d.target.y)
+    .attr('color', 'red')
+
   var node = g.selectAll(".node")
-    .data(nodeList)
+    .data(nodes)
     .enter().append("g")
       .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
-
-  node.append("line")
-    .attr("class", "link")
-    .attr('x1', d => 0)
-    .attr('y1', d => 0)
-    .attr('x2', d => -100)
-    .attr('y2', d => 0)
 
   node.append("circle")
       .attr("r", 2.5);
   node.append("text")
       .attr("dy", 3)
       .attr("x", function(d) { return 8; })
-      .text(function(d) { return d.id; });
+      .text(function(d) { return d.key; });
 })
 </script>

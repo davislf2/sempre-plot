@@ -156,22 +156,26 @@ full_paths, keywords, nodes = process_all_paths()
 
 def gather_edges(full_paths, keywords):
     nodes = OrderedDict()
-    for fp in full_paths:
-        path = fp.path
+    for full_node in full_paths:
+        path = full_node.path
         for i, key in enumerate(path):
             if not key in nodes:
-                nodes[key] = {'key': key, 'children': [], 'parents': []}
+                node = {'key': key, 'children': set(), 'parents': set()}
+                nodes[key] = node
             else:
-                parent = [path[i-1]] if i > 0 else []
-                child = [path[i+1]] if i < len(path)-1 else []
                 node = nodes[key]
-                nodes[key]['children'].append(child)
-                nodes[key]['parents'].append(parent)
+            if i < len(path) - 1:
+                node['children'].update([path[i+1]])
+            if i > 0:
+                node['parents'].update([path[i-1]])
+            node['path'] = full_node.path
+    for k, node in nodes.items():
+        node['children'] = list(node['children'])
+        node['parents'] = list(node['parents'])
     return nodes
 
-with open(args.out_path + 'graph.json', 'w') as jsonfile:
-    json.dump(gather_edges(full_paths, keywords), jsonfile)
-
+with open(args.out_path + '.graph.json', 'w') as jsonfile:
+    json.dump(list(gather_edges(full_paths, keywords).values()), jsonfile)
 
 dependencies = OrderedDict()
 def expand(node, depth, height):
