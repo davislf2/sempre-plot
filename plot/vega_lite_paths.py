@@ -62,6 +62,15 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
     def id(self):
         return self.path[-1]
 
+    @property
+    def meta(self):
+        if 'type' not in self.schema:
+            return 'None'
+        type = self.schema['type']
+        if isinstance(type, list):
+            return '|'.join(type)
+        else: return type
+
     def __hash__(self):
         return hash(self.path)
 
@@ -113,11 +122,13 @@ def children(node):
 def process_all_paths():
     node_list = []
     nodes = set()
+    path_to_nodes = OrderedDict()
     seed = Node(schema, [])
     queue = deque([seed])
 
     while len(queue) > 0:
         state = queue.pop()
+        path_to_nodes[state.path] = state
         nodes.add(state)
         new_states = children(state)
         queue.extend(reversed(new_states))
@@ -126,28 +137,30 @@ def process_all_paths():
     if args.filter:
         nodes = [node for node in nodes if all([p not in args.filter for p in node.path])]
     node_list = list(nodes)
-    return node_list, nodes
+    return node_list, path_to_nodes
 
+
+def get_key(full_node):
+    key = (full_node.id, len(full_node.path))
+    return key
 
 def gather_edges(node_list):
     nodes = OrderedDict()
     for full_node in node_list:
-        key = full_node.id
+        key = get_key(full_node)
         if key not in nodes:
-            node = {'key': key, 'path': set(), 'parents': set()}
+            node = {'key': key, 'paths': set()}
             nodes[key] = node
         else:
             node = nodes[key]
-        node['path'].update([tuple(full_node.path)])
-        if len(full_node.path) > 1:
-            node['parents'].update([full_node.path[-2]])
+        node['paths'].add(tuple(full_node.path))
+        node['parents'] = []
 
     for _, node in nodes.items():
-        node['path'] = list(node['path'])
-        node['parents'] = list(node['parents'])
+        node['paths'] = list(node['paths'])
     return nodes
 
 
-node_list, nodes = process_all_paths()
+node_list, path_to_nodes = process_all_paths()
 with open(args.out_path + '.graph.json', 'w') as jsonfile:
     json.dump(list(gather_edges(node_list).values()), jsonfile)
