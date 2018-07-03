@@ -32,7 +32,10 @@ d3.json("data/vegalite.graph.json", function(nodes) {
   // classes = classes.slice(0,10)
   var keyToNode = {}
   nodes.forEach(function(node) {
-    node.depth = node.path.length
+    total_depth = node.path.reduce( function(a, c) {return a + c.length}, 0)
+    avg_depth = total_depth / node.path.length
+    max_depth = node.path.reduce( function(a, c) {return Math.min(a, c.length)}, 10)
+    node.depth = max_depth
     node.x = node.depth * 100
     node.y = Math.random() * 1200
     keyToNode[node.key] = node

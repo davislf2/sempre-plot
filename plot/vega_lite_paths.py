@@ -134,14 +134,17 @@ def gather_edges(node_list):
     for full_node in node_list:
         key = full_node.id
         if key not in nodes:
-            node = {'key': key, 'path': set()}
+            node = {'key': key, 'path': set(), 'parents': set()}
             nodes[key] = node
         else:
             node = nodes[key]
-        node['path'].update([full_node.path])
+        node['path'].update([tuple(full_node.path)])
+        if len(full_node.path) > 1:
+            node['parents'].update([full_node.path[-2]])
 
     for _, node in nodes.items():
         node['path'] = list(node['path'])
+        node['parents'] = list(node['parents'])
     return nodes
 
 
