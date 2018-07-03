@@ -16,7 +16,7 @@ Args:
 
 import json, csv
 from jsonschema import RefResolver
-from collections import deque, namedtuple, OrderedDict
+from collections import deque, namedtuple, OrderedDict, defaultdict
 import argparse
 
 
@@ -34,7 +34,6 @@ with open(args.schema_path) as f:
 resolver = RefResolver.from_schema(schema)
 resolve = lambda ref: resolver.resolve(ref)[1]
 
-
 # represents a node in the schema
 class Node(namedtuple('Node', ['schema', 'full_path'])):
 
@@ -42,13 +41,10 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
     def path(self):
         # remove "anyOf"s and references
         return ('vegalite',) + tuple(key for key in self.full_path if not (key.startswith("anyOf[") or key.startswith("#/") or key=='items'))
+
     @property
     def pathstr(self):
         return '.'.join(self.path)
-
-    @property
-    def full_path_nice(self):
-        return ('vegalite',) + tuple(key if not key.startswith('#') else key[key.rfind('/'):] for key in self.full_path if not (key.startswith("anyOf[") or key=='items'))
 
     @property
     def description(self):
@@ -61,12 +57,10 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
     def name(self):
         return self.path[-1]
 
+    # the immediate preceeding def
     @property
     def id(self):
-        p = self.full_path_nice
-        if len(p)>1:
-            return p[-2:]
-        return p[-1:]
+        return self.path[-1]
 
     def __hash__(self):
         return hash(self.path)
@@ -79,6 +73,7 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
 
     def __repr__(self):
         return '.'.join(self.path) + '\t' + '.'.join(self.full_path)
+
 
 def children(node):
     """Return the children of a given node.
@@ -114,28 +109,10 @@ def children(node):
 
     return child_nodes
 
-def real_children(node):
-    """
-    changes need to happen in real path, and not just full path
-    """
-
-    queue = deque(children(node))
-    child_nodes = set()
-
-    while len(queue) > 0:
-        c = queue.pop()
-        if c.path != node.path:
-            child_nodes.add(c)
-        else:
-            queue.extend(children(c))
-
-    return child_nodes
-
 # explore all paths, DFS
 def process_all_paths():
-    full_paths = []
+    node_list = []
     nodes = set()
-    keywords = set()
     seed = Node(schema, [])
     queue = deque([seed])
 
@@ -144,63 +121,30 @@ def process_all_paths():
         nodes.add(state)
         new_states = children(state)
         queue.extend(reversed(new_states))
-        keywords.add(state)
 
     nodes = sorted(nodes)
     if args.filter:
         nodes = [node for node in nodes if all([p not in args.filter for p in node.path])]
-    full_paths = list(nodes)
-    return full_paths, keywords, nodes
+    node_list = list(nodes)
+    return node_list, nodes
 
-full_paths, keywords, nodes = process_all_paths()
 
-def gather_edges(full_paths, keywords):
+def gather_edges(node_list):
     nodes = OrderedDict()
-    for full_node in full_paths:
-        path = full_node.path
-        for i, key in enumerate(path):
-            if not key in nodes:
-                node = {'key': key, 'children': set(), 'parents': set()}
-                nodes[key] = node
-            else:
-                node = nodes[key]
-            if i < len(path) - 1:
-                node['children'].update([path[i+1]])
-            if i > 0:
-                node['parents'].update([path[i-1]])
-            node['path'] = full_node.path
-    for k, node in nodes.items():
-        node['children'] = list(node['children'])
-        node['parents'] = list(node['parents'])
+    for full_node in node_list:
+        key = full_node.id
+        if key not in nodes:
+            node = {'key': key, 'path': set()}
+            nodes[key] = node
+        else:
+            node = nodes[key]
+        node['path'].update([full_node.path])
+
+    for _, node in nodes.items():
+        node['path'] = list(node['path'])
     return nodes
 
+
+node_list, nodes = process_all_paths()
 with open(args.out_path + '.graph.json', 'w') as jsonfile:
-    json.dump(list(gather_edges(full_paths, keywords).values()), jsonfile)
-
-dependencies = OrderedDict()
-def expand(node, depth, height):
-    tree = {}
-    tree['path'] = node.pathstr
-    tree['node'] = node
-    child_nodes = real_children(node)
-    dependencies[tuple(node.full_path_nice)] = tree
-    if len(child_nodes) == 0:
-        tree['size'] = 1
-        return tree
-    tree['y'] = len(child_nodes)
-
-    filtered_children = [c for c in child_nodes if all([p not in args.filter for p in c.path])]
-    tree['children'] = [expand(c, depth+1, height+h) for h,c in enumerate(filtered_children)]
-    tree['size'] = sum(c['size'] for c in tree['children'])
-
-    return tree
-
-with open(args.out_path + 'tree.json', 'w') as jsonfile:
-    json.dump(expand(Node(schema, []), 0, 0), jsonfile)
-
-with open(args.out_path + '.dep.json', 'w') as jsonfile:
-    json.dump([{'id': node['node'].id,\
-                'path': node['path'],\
-                'full_path': node['node'].full_path_nice,\
-                'depth': len(node['node'].full_path_nice),\
-               } for k,node in dependencies.items()], jsonfile)
+    json.dump(list(gather_edges(node_list).values()), jsonfile)

@@ -40,7 +40,7 @@ d3.json("data/vegalite.graph.json", function(nodes) {
 
   links = []
   nodes.forEach(function(node) {
-     node.children.forEach(function(child){
+     node.parents.forEach(function(child){
        link = {'source': node, target: keyToNode[child]}
        console.log(link)
        links.push(link)
