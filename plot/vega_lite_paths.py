@@ -67,7 +67,6 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
         for key in reversed(self.full_path):
             if key.startswith('#/'):
                 return key.replace('#/definitions/', '#/')
-
     @property
     def meta(self):
         if 'type' not in self.schema:
@@ -76,6 +75,10 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
         if (isinstance(type, list)):
             return tuple(type)
         return type
+
+    def isleaf(self):
+        # return len(children(self)) == 0
+        return 'object' not in self.meta
 
     def __hash__(self):
         return hash(self.path)
@@ -103,8 +106,8 @@ def children(node):
     child_nodes = []
 
     if "anyOf" in schema:
-        for i, s in enumerate(schema["anyOf"]):
-            child_nodes.append(Node(s, full_path + ["anyOf[{}]".format(i)]))
+        for _, s in enumerate(schema["anyOf"]):
+            child_nodes.append(Node(s, full_path))
 
     # jump through reference
     if "$ref" in schema:
@@ -140,7 +143,7 @@ def process_all_paths():
         vocab.update(state.path)
         path_to_nodes[state.path] = state
         new_states = children(state)
-        queue.extend(reversed(new_states))
+        queue.extend(new_states)
 
     nodes = path_to_nodes.values()
     node_list = list(nodes)
@@ -155,6 +158,8 @@ def gather_edges(node_list):
     nodes = OrderedDict()
     for full_node in node_list:
         key = get_key(full_node)
+        if full_node.isleaf():
+            continue
         if key not in nodes:
             node = {'key': key, 'paths': set(), 'types': set(), 'defs': set()}
             nodes[key] = node
@@ -177,3 +182,6 @@ print('# vocab', len(vocab), vocab)
 
 with open(args.out_path + '.graph.json', 'w') as jsonfile:
     json.dump(list(gather_edges(node_list).values()), jsonfile)
+
+with open(args.out_path + '.paths.json', 'w') as jsonfile:
+    json.dump(list(node_list), jsonfile)

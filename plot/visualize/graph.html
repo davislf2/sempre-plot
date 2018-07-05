@@ -61,8 +61,11 @@ function last(str) {
   if (str.lastIndexOf('.')==-1) return str
   return str.substr(str.lastIndexOf('.')+1)
 }
-var width = 2800,
-    height = 2800;
+
+
+
+var width = 1000,
+    height = 1800;
 
 var svg = d3.select("body").append("svg")
     .attr("width", width)
@@ -117,11 +120,12 @@ d3.json("data/vegalite.graph.json", function(nodes) {
       .text(function(d) { return d.description})
 
   node.append("circle")
-      .attr("r", 2.5);
+      .attr("r", 2.5)
+
   node.append("text")
       .attr("dy", 3)
       .attr("x", function(d) { return 8; })
-      .text(function(d) { return d.defs + '\t' + d.label; });
+      .text(function(d) { return d.label; });
 })
 function clicked(d) {
   console.log(d)
@@ -147,3 +151,5 @@ function mouseouted(d) {
       .classed("node--source", false);
 }
 </script>
+</body>
+</html>
