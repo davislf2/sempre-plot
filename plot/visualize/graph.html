@@ -6,7 +6,7 @@
 }
 .node {
   font: 300 11px "Helvetica Neue", Helvetica, Arial, sans-serif;
-  fill: #bbb;
+  fill: #000;
 }
 
 .node--internal circle {
@@ -17,20 +17,9 @@
 }
 .link {
   fill: solid;
-  stroke: #555;
-  stroke-opacity: 0.5;
-  stroke-width: 0.5px;
-}
-
-
-
-.node:hover {
-  fill: #000;
-}
-
-.link {
   stroke: steelblue;
-  stroke-opacity: 0.4;
+  stroke-opacity: 0.1;
+  stroke-width: 0.5px;
   fill: none;
   pointer-events: none;
 }
@@ -72,8 +61,8 @@ function last(str) {
   if (str.lastIndexOf('.')==-1) return str
   return str.substr(str.lastIndexOf('.')+1)
 }
-var width = 1200,
-    height = 1800;
+var width = 2800,
+    height = 2800;
 
 var svg = d3.select("body").append("svg")
     .attr("width", width)
@@ -89,7 +78,7 @@ d3.json("data/vegalite.graph.json", function(nodes) {
   var vertCounter = {}
   nodes.forEach(function(node) {
     node.label = node.key[0]
-    node.x = node.key[1] * 100 - 50
+    node.x = node.key[1] * 150 - 50
     d = node.key[1]
     vertCounter[d] = vertCounter[d] + 1 || 0
     node.y = vertCounter[d] * 10 + 50
@@ -107,16 +96,6 @@ d3.json("data/vegalite.graph.json", function(nodes) {
      })
   })
 
-  var width = 1200,
-      height = 1800;
-
-  var svg = d3.select("body").append("svg")
-      .attr("width", width)
-      .attr("height", height);
-
-  g = svg.append("g").attr("transform", "translate(40,0)");
-
-
   path = path.data(links)
   .enter().append("line")
     .attr("class", "link")
@@ -124,7 +103,6 @@ d3.json("data/vegalite.graph.json", function(nodes) {
     .attr('y1', d => d.source.y)
     .attr('x2', d => d.target.x)
     .attr('y2', d => d.target.y)
-    .attr('color', 'red')
 
   node = node
     .data(nodes)
@@ -132,22 +110,27 @@ d3.json("data/vegalite.graph.json", function(nodes) {
       .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
       .attr("transform", function(d) { return "translate(" + d.x + "," + d.y + ")"; })
       .on("mouseover", mouseovered)
-      .on("mouseout", mouseouted);
+      .on("click", clicked)
+    //  .on("mouseout", mouseouted);
+
+  node.append("svg:title")
+      .text(function(d) { return d.description})
 
   node.append("circle")
       .attr("r", 2.5);
   node.append("text")
       .attr("dy", 3)
       .attr("x", function(d) { return 8; })
-      .text(function(d) { return d.label; });
+      .text(function(d) { return d.defs + '\t' + d.label; });
 })
-
+function clicked(d) {
+  console.log(d)
+}
 function mouseovered(d) {
   node.each(function(n) { n.target = n.source = false; });
   path
       .classed("link--target", function(l) { if (l.target === d) return l.source.source = true; })
       .classed("link--source", function(l) { if (l.source === d) return l.target.target = true; })
-    .filter(function(l) { return l.target === d || l.source === d; })
 
   node
       .classed("node--target", function(n) { return n.target; })

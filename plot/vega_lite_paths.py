@@ -32,7 +32,11 @@ args = arg_parser.parse_args()
 with open(args.schema_path) as f:
     schema = json.load(f)
 resolver = RefResolver.from_schema(schema)
-resolve = lambda ref: resolver.resolve(ref)[1]
+
+def resolve(ref):
+    res = resolver.resolve(ref)
+    schema = res[1]
+    return schema
 
 # represents a node in the schema
 class Node(namedtuple('Node', ['schema', 'full_path'])):
@@ -59,23 +63,25 @@ class Node(namedtuple('Node', ['schema', 'full_path'])):
 
     # the immediate preceeding def
     @property
-    def id(self):
-        return self.path[-1]
+    def defn(self):
+        for key in reversed(self.full_path):
+            if key.startswith('#/'):
+                return key.replace('#/definitions/', '#/')
 
     @property
     def meta(self):
         if 'type' not in self.schema:
             return 'None'
         type = self.schema['type']
-        if isinstance(type, list):
-            return '|'.join(type)
-        else: return type
+        if (isinstance(type, list)):
+            return tuple(type)
+        return type
 
     def __hash__(self):
         return hash(self.path)
 
     def __eq__(self, other):
-        return self.path == other.path
+        return self.full_path == other.full_path
 
     def __lt__(self, other):
         return'.'.join(self.full_path) < '.'.join(other.full_path)
@@ -121,27 +127,28 @@ def children(node):
 # explore all paths, DFS
 def process_all_paths():
     node_list = []
-    nodes = set()
+    vocab = set()
     path_to_nodes = OrderedDict()
     seed = Node(schema, [])
     queue = deque([seed])
 
     while len(queue) > 0:
         state = queue.pop()
+        if args.filter and any(p in args.filter for p in state.path):
+            continue
+
+        vocab.update(state.path)
         path_to_nodes[state.path] = state
-        nodes.add(state)
         new_states = children(state)
         queue.extend(reversed(new_states))
 
-    nodes = sorted(nodes)
-    if args.filter:
-        nodes = [node for node in nodes if all([p not in args.filter for p in node.path])]
+    nodes = path_to_nodes.values()
     node_list = list(nodes)
-    return node_list, path_to_nodes
+    return node_list, vocab
 
 
 def get_key(full_node):
-    key = (full_node.id, len(full_node.path))
+    key = (full_node.path[-1], len(full_node.path))
     return key
 
 def gather_edges(node_list):
@@ -149,18 +156,24 @@ def gather_edges(node_list):
     for full_node in node_list:
         key = get_key(full_node)
         if key not in nodes:
-            node = {'key': key, 'paths': set()}
+            node = {'key': key, 'paths': set(), 'types': set(), 'defs': set()}
             nodes[key] = node
         else:
             node = nodes[key]
         node['paths'].add(tuple(full_node.path))
         node['parents'] = []
+        node['description'] = full_node.description
+        node['types'].add(full_node.meta)
+        node['defs'].add(full_node.defn)
 
     for _, node in nodes.items():
-        node['paths'] = list(node['paths'])
+        for k in ['paths', 'types', 'defs']:
+            node[k] = list(node[k])
     return nodes
 
+node_list, vocab = process_all_paths()
+print('# nodes', len(node_list))
+print('# vocab', len(vocab), vocab)
 
-node_list, path_to_nodes = process_all_paths()
 with open(args.out_path + '.graph.json', 'w') as jsonfile:
     json.dump(list(gather_edges(node_list).values()), jsonfile)
