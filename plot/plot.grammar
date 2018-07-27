@@ -52,3 +52,11 @@
         (interactive.JsonInitFn Finalize) (floating 1))
 
 )
+
+################################
+# removal formulas
+(when remove-path
+    (rule $ContextPath (anypath) (interactive.JsonFn ContextPath) (floating 1))
+    (rule $UndefinedValue (anyvalue) (ConstantFn undefined) (floating 1))
+    (rule $Action ($ContextPath $UndefinedValue) (interactive.JsonFn Join) (floating 1))
+)

@@ -14,12 +14,12 @@ import fig.basic.LispTree;
  * @author sidaw
  */
 public class JsonValue extends Value {
+  public static final String UNDEFINED = "undefined";
   public static Equivalence<JsonNode> numEquals = JsonNumEquals.getInstance();
 
   JsonNode json;
   String schemaType = "notype";
   String jsonType = "string";
-
   public JsonNode getJsonNode() {
     return json;
   }
@@ -72,5 +72,9 @@ public class JsonValue extends Value {
 
   public String getSchemaType() {
     return schemaType;
+  }
+
+  public boolean isUndefined() {
+    return this.schemaType.equals(JsonValue.UNDEFINED);
   }
 }

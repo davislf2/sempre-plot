@@ -1,8 +1,11 @@
 package edu.stanford.nlp.sempre.interactive;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 import edu.stanford.nlp.sempre.*;
 import fig.basic.LogInfo;
@@ -182,7 +185,24 @@ public class JsonMaster extends Master {
        *   }]
        */
       // TODO
-
+    } else if (command.equals("example")) {
+      /* Fetch an example specification
+       *
+       * Usage:
+       *   ["example" {
+       *     "schema": schema map (object),
+       *     "amount": the number of examples to be fetched, return all when unspecified
+       *   }]
+       */
+      List<Map<String, Object>> examples = VegaResources.getExamples();
+      List<Map<String, Object>> randomExamples = new ArrayList<>(examples);
+      Collections.shuffle(randomExamples);
+      if (kv.containsKey("amount")) {
+        int amount = (int) kv.get("amount");
+        int size = randomExamples.size();
+        randomExamples = randomExamples.subList(0, amount > size ? size : amount);
+      }
+      response.lines = randomExamples.stream().map(ex -> Json.writeValueAsStringHard(ex)).collect(Collectors.toList());
     } else if (command.equals("log")) {
       /* Used to log information that is not acted upon
        * Usage: ["log", object]

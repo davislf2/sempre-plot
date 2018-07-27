@@ -147,6 +147,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('VegaResources.excludedPaths', 'vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'data', 'facet'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
   o('VegaResources.initialTemplates', "./#{$path}/initial-templates.json"),
+  o('VegaResources.queryPath', "./plot-out/query.jsonl"),
   o('VegaEngine.verbose', 0),
   o('VegaExecutor.compileVega', false),
 

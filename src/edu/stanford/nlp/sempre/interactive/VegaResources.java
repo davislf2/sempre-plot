@@ -1,6 +1,7 @@
 package edu.stanford.nlp.sempre.interactive;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -22,6 +23,7 @@ import fig.basic.MapUtils;
 import fig.basic.Option;
 
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Stream;
 
 
 /**
@@ -36,6 +38,7 @@ public class VegaResources {
     @Option(gloss = "Path elements to exclude") Set<String> excludedPaths;
     @Option(gloss = "File containing all the colors") String colorFile;
     @Option(gloss = "File containing initial plot templates") String initialTemplates;
+    @Option(gloss = "Path to a log of queries") String queryPath;
     @Option(gloss = "verbosity") int verbose = 0;
   }
   public static Options opts = new Options();
@@ -51,11 +54,11 @@ public class VegaResources {
   private static Map<String, Set<List<String>>> enumValueToPaths;
 
   private static Set<String> colorSet;
+  private static List<Map<String, Object>> examples;
 
   public static final Set<String> CHANNELS = Sets.newHashSet("x", "y", "color", "opacity", "shape", "size", "row", "column");
   public static final Set<String> MARKS = Sets.newHashSet("area", "bar", "circle", "line", "point", "rect", "rule", "square", "text", "tick");
   public static final Set<String> AGGREGATES = Sets.newHashSet("max", "mean", "min", "median", "sum");
-
   static class InitialTemplate {
     @JsonProperty("mark") public String mark;
     @JsonProperty("encoding") public Map<String, String> encoding;
@@ -99,6 +102,12 @@ public class VegaResources {
           initialTemplates.add(Json.getMapper().treeToValue(node, InitialTemplate.class));
         }
         LogInfo.logs("Read %d initial templates", initialTemplates.size());
+      }
+
+      if (!Strings.isNullOrEmpty(opts.queryPath)) {
+        Stream<String> stream = Files.lines(Paths.get(opts.queryPath));
+        examples = stream.map(q -> Json.readMapHard(q)).filter(q -> ((List<?>)q.get("q")).get(0).equals("accept"))
+                .collect(Collectors.toList());
       }
 
     } catch (Exception ex) {
@@ -185,13 +194,11 @@ public class VegaResources {
         if (opts.verbose > 0)
           LogInfo.logs("getValues %s %s", type, path.toString());
 
+        List<String> simplePath = schema.simplePath();
+        String last = simplePath.get(simplePath.size() - 1);
         if (type.equals(JsonSchema.NOTYPE)) {
           continue;
         } else if (type.equals("string")) {
-
-          List<String> simplePath = schema.simplePath();
-          String last = simplePath.get(simplePath.size() - 1);
-
           if (last.endsWith("color") || last.endsWith("Color")
             || last.equals("fill")
             || last.equals("stroke") || last.equals("background")) {
@@ -199,18 +206,22 @@ public class VegaResources {
             values.add(new JsonValue("blue").withSchemaType("string"));
             values.add(new JsonValue("green").withSchemaType("string"));
           } else if (last.equals("field")) {
-            values.add(new JsonValue("fieldName").withSchemaType("string"));
+//            values.add(new JsonValue("fieldName").withSchemaType("string"));
+          } else if(last.endsWith("font") || last.endsWith("Font")) {
+            values.add(new JsonValue("times").withSchemaType("string"));
+            values.add(new JsonValue("monaco").withSchemaType("string"));
+            values.add(new JsonValue("cursive").withSchemaType("string"));
           } else if (schema.isEnum()) {
             values.addAll(schema.enums().stream().map(s -> new JsonValue(s).withSchemaType("enum"))
               .collect(Collectors.toList()));
           } else {
-            values.add(new JsonValue("XX").withSchemaType(type));
+            values.add(new JsonValue("XXYYZZ").withSchemaType(type));
           }
         } else if (type.equals("boolean")) {
           values.add(new JsonValue(true).withSchemaType("boolean"));
           values.add(new JsonValue(false).withSchemaType("boolean"));
         } else if (type.equals("number")) {
-          values.add(new JsonValue(ThreadLocalRandom.current().nextInt(0, 100)).withSchemaType("number"));
+          values.add(new JsonValue(ThreadLocalRandom.current().nextInt(0, 50)).withSchemaType("number"));
           values.add(new JsonValue(0.1 * ThreadLocalRandom.current().nextInt(1, 10)).withSchemaType("number"));
         }
       }
@@ -223,6 +234,10 @@ public class VegaResources {
   public static Set<String> getEnumTypes(String value) {
     if (enumValueToTypes.containsKey(value)) return enumValueToTypes.get(value);
     return null;
+  }
+
+  public static List<Map<String, Object>> getExamples() {
+    return examples;
   }
 
   public static Set<String> getColorSet() {

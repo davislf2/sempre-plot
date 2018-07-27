@@ -98,7 +98,11 @@ public class JsonUtils  {
         node = (ObjectNode)node.get(name);
       }
     }
-    node.put(lastPath, value);
+
+    if (value == null)
+      node.remove(lastPath);
+    else
+      node.put(lastPath, value);
   }
 
   public static JsonNode getPathValue(JsonNode context, String path) {

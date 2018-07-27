@@ -1,5 +1,6 @@
 defaults :: setWithoutContext	-100.0
 defaults :: initWithContext	-100.0
+defaults :: removingFromContext	2.0
 defaults :: anchored	2.0
 lexPathPattern :: numExactMatch	2.0
 lexPathPattern :: numSoftMatch	1.0

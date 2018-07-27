@@ -3,6 +3,7 @@ package edu.stanford.nlp.sempre.interactive;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
 
 import edu.stanford.nlp.sempre.ActionFormula;
@@ -20,6 +21,7 @@ import edu.stanford.nlp.sempre.ValueFormula;
 import fig.basic.LispTree;
 import fig.basic.LogInfo;
 import fig.basic.Option;
+import fig.basic.Pair;
 
 /**
  * collection of misc. semantic functions for filtering json objects
@@ -32,7 +34,7 @@ public class JsonFn extends SemanticFn {
   }
 
   public static Options opts = new Options();
-  enum Mode {PathElement, Path, JsonValue, ConstantValue, AnyPath, AnyPathElement, Template, Join};
+  enum Mode {PathElement, Path, JsonValue, ConstantValue, AnyPath, AnyPathElement, Template, Join, ContextPath};
   Mode mode;
   DerivationStream stream;
 
@@ -48,9 +50,7 @@ public class JsonFn extends SemanticFn {
       return new IsPathStream(ex, c);
     } else if (mode == Mode.JsonValue) {
       return new JsonValueStream(ex, c);
-    } else if (mode == Mode.AnyPath) {
-      return new PathStream(ex, c, mode);
-    } else if (mode == Mode.Path) {
+    } else if (mode == Mode.AnyPath || mode == Mode.ContextPath || mode == Mode.Path) {
       return new PathStream(ex, c, mode);
     } else if (mode == Mode.Join) {
       return new JoinStream(ex, c);
@@ -77,6 +77,8 @@ public class JsonFn extends SemanticFn {
       if (valueFormula instanceof ValueFormula) {
         if ("*".equals(Formulas.getString(valueFormula))) {
           values = VegaResources.getValues(path, null);
+        } else if (JsonValue.UNDEFINED.equals(Formulas.getString(valueFormula))) {
+          values = Lists.newArrayList(new JsonValue(valueFormula).withSchemaType(JsonValue.UNDEFINED));
         } else {
           JsonValue v = (JsonValue)((ValueFormula)valueFormula).value;
           values = VegaResources.getValues(path, v);
@@ -199,7 +201,16 @@ public class JsonFn extends SemanticFn {
 
       if (mode == Mode.AnyPath)
         paths = allPaths;
-      else {
+      else if (mode == Mode.ContextPath) {
+        VegaJsonContextValue context = (VegaJsonContextValue) ex.context;
+        List<Pair<List<String>, JsonNode>> allPathsValues = JsonUtils.allPathValues(context.cloneJsonNode());
+        paths = new ArrayList<>();
+        for (Pair<List<String>, JsonNode> pv : allPathsValues) {
+          List<String> path = pv.getFirst();
+          NameValue nameValue = new NameValue("$." + String.join(".", path));
+          paths.add(nameValue);
+        }
+      } else {
         Formula pathPattern = c.child(0).formula;
         List<String> matchPattern;
         if (pathPattern instanceof ActionFormula) {
@@ -211,8 +222,8 @@ public class JsonFn extends SemanticFn {
         }
 
         paths = VegaResources.allPathsMatcher.match(matchPattern)
-          .stream().map(path -> (new NameValue("$." + String.join(".", path))))
-          .collect(Collectors.toList());
+                .stream().map(path -> (new NameValue("$." + String.join(".", path))))
+                .collect(Collectors.toList());
       }
     }
 

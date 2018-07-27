@@ -79,8 +79,8 @@ public class VegaExecutor extends Executor {
       // doubles, so this is a hack.
       double x = ((NumberValue) value).value;
       if (x == (int) x)
-        return new Integer((int) x);
-      return new Double(x);
+        return (int) x;
+      return x;
     } else if (value instanceof NameValue) {
       String id = ((NameValue) value).id;
       return id;
@@ -111,10 +111,15 @@ public class VegaExecutor extends Executor {
       // all actions takes a fixed set as argument
       if (id.equals("set")) {
         Formula pathf = f.args.get(1);
-        Value value = ((ValueFormula) f.args.get(2)).value;
+        JsonValue value = (JsonValue) ((ValueFormula) f.args.get(2)).value;
         String jsonPath = Formulas.getString(pathf);
         ObjectNode objNode = (ObjectNode) jsonContext.cloneJsonNode();
-        JsonUtils.setPathValue(objNode, jsonPath, ((JsonValue)value).getJsonNode());
+
+        if (value.isUndefined()) {
+          JsonUtils.setPathValue(objNode, jsonPath, null);
+        } else {
+          JsonUtils.setPathValue(objNode, jsonPath, value.getJsonNode());
+        }
         result = objNode;
       } else if (id.equals("init")) {
         // read the formula

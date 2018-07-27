@@ -44,6 +44,12 @@ public class VegaFeatureComputer implements FeatureComputer {
       } else if (context.getJsonNode().has("$schema") && mode.equals("init")) {
         deriv.addFeature("defaults", "initWithContext", 1);
       }
+
+      if (mode.equals("set")) {
+        Value v = ((ValueFormula) ((ActionFormula)deriv.formula).args.get(2)).value;
+        if (v instanceof JsonValue && ((JsonValue) v).getSchemaType().equals(JsonValue.UNDEFINED))
+          deriv.addFeature("defaults", "removingFromContext");
+      }
     }
 
     if (deriv.getRule().isAnchored()) {
