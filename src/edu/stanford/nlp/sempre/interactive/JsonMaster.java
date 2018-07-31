@@ -112,15 +112,18 @@ public class JsonMaster extends Master {
       session.updateContext();
       LogInfo.logs("parse stats: %s", response.stats);
 
-      if (kv.containsKey("random") && (boolean)kv.get("random")) {
-        Collections.shuffle(ex.predDerivations);
-      }
-
+      int amount = ex.predDerivations.size();
+      int size = amount;
       if (kv.containsKey("amount")) {
-        int amount = (int) kv.get("amount");
-        int size = ex.predDerivations.size();
-        ex.predDerivations = ex.predDerivations.subList(0, amount > size ? size : amount);
+        amount = (int) kv.get("amount");
       }
+      List<Derivation> top = ex.predDerivations.subList(0, amount/2);
+      List<Derivation> rest = ex.predDerivations.subList(amount/2, size);
+      if (kv.containsKey("random") && (boolean)kv.get("random")) {
+        Collections.shuffle(rest);
+      }
+      top.addAll(rest);
+      ex.predDerivations = top.subList(0, amount > size ? size : amount);
       response.ex = ex;
     } else if (command.equals("random")) {
       /* Generate random derivations

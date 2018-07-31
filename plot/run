@@ -142,7 +142,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('Derivation.showRules', false),
   o('Derivation.anchoredBonus', 0.0),
 
-  o('VegaResources.vegaSchema', "./#{$path}/vega-lite-v2.json"),
+  o('VegaResources.vegaSchema', "./#{$path}/vega-lite.json"),
   # o('VegaResources.excludedPaths', 'items', 'vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'data', 'facet'),
   o('VegaResources.excludedPaths', 'vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'data', 'facet'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
