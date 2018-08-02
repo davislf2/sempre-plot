@@ -15,6 +15,8 @@
 (rule $Path ($PathPattern) (interactive.JsonFn Path))
 
 (rule $AnyPath (anypath) (interactive.JsonFn AnyPath) (floating 1))
+# (rule $ContextPath (anypath) (interactive.JsonFn ContextPath) (floating 1))
+# (rule $AnyPath ($ContextPath) (IdentityFn) (floating 1))
 # unlike AnyPath, AnyValue cannot be enumerated
 (rule $AnyValue (anyvalue) (ConstantFn *) (floating 1))
 

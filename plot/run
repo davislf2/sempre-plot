@@ -131,7 +131,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
 
   o('JsonMaster.intOutputPath', './plot-out/'),
   o('InteractiveServer.numThreads', 8),
-  o('InteractiveServer.maxCandidates', 50),
+  o('InteractiveServer.maxCandidates', 100),
   o('InteractiveServer.queryLogPath', './plot-out/query.jsonl'),
   o('InteractiveServer.responseLogPath', './plot-out/response.jsonl'),
   o('InteractiveServer.port', 8405),
@@ -144,8 +144,8 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
 
   o('VegaResources.vegaSchema', "./#{$path}/vega-lite.json"),
   # escape $schema because of bash
-  o('VegaResources.excludedPaths', '\'$schema\'', 'vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'transform', 'data', 'facet'),
-  o('VegaResources.excludedContextPaths', '\'$schema\'', 'encoding', 'condition', 'selection', 'transform', 'data'),
+  o('VegaResources.excludedPaths', '\'$schema\'', 'vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'transform', 'data', 'facet', 'geoshape'),
+  o('VegaResources.excludedContextPaths', '\'$schema\'', 'encoding', 'condition', 'selection', 'transform', 'data', 'geoshape'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
   o('VegaResources.initialTemplates', "./#{$path}/initial-templates.json"),
   o('VegaResources.queryPath', "./plot-out/query.jsonl"),

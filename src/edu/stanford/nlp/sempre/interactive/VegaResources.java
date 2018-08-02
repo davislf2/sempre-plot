@@ -223,8 +223,14 @@ public class VegaResources {
           values.add(new JsonValue(true).withSchemaType("boolean"));
           values.add(new JsonValue(false).withSchemaType("boolean"));
         } else if (type.equals("number")) {
-          values.add(new JsonValue(ThreadLocalRandom.current().nextInt(0, 50)).withSchemaType("number"));
-          values.add(new JsonValue(0.1 * ThreadLocalRandom.current().nextInt(1, 10)).withSchemaType("number"));
+          int max = schema.node().has("maximum")? schema.node().get("maximum").asInt() : 100;
+          int min = schema.node().has("minimum")? schema.node().get("minimum").asInt() : 0;
+          int grids = 32;
+          double numberValue = ThreadLocalRandom.current().nextInt(0, grids) * 1.0 / grids * (max - min) + min;
+          if (numberValue > 1 || numberValue < -1)
+            values.add(new JsonValue((int) numberValue).withSchemaType("number"));
+          else
+            values.add(new JsonValue(numberValue).withSchemaType("number"));
         }
       }
     }
