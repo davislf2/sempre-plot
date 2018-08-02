@@ -207,7 +207,7 @@ public class JsonFn extends SemanticFn {
         paths = new ArrayList<>();
         for (Pair<List<String>, JsonNode> pv : allPathsValues) {
           List<String> path = pv.getFirst();
-          if (path.size() > 0 && path.get(0).equals("data"))
+          if (path.stream().anyMatch(tok -> VegaResources.opts.excludedContextPaths.contains(tok)))
             continue;
           NameValue nameValue = new NameValue("$." + String.join(".", path));
           paths.add(nameValue);

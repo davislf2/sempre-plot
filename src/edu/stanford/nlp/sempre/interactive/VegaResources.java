@@ -1,5 +1,6 @@
 package edu.stanford.nlp.sempre.interactive;
 
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +37,7 @@ public class VegaResources {
   public static class Options {
     @Option(gloss = "File containing the vega schema") String vegaSchema;
     @Option(gloss = "Path elements to exclude") Set<String> excludedPaths;
+    @Option(gloss = "Paths in the context that are not considered for removals") Set<String> excludedContextPaths;
     @Option(gloss = "File containing all the colors") String colorFile;
     @Option(gloss = "File containing initial plot templates") String initialTemplates;
     @Option(gloss = "Path to a log of queries") String queryPath;

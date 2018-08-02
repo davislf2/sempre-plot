@@ -117,8 +117,8 @@ public class JsonMaster extends Master {
       if (kv.containsKey("amount")) {
         amount = (int) kv.get("amount");
       }
-      List<Derivation> top = ex.predDerivations.subList(0, amount/2);
-      List<Derivation> rest = ex.predDerivations.subList(amount/2, size);
+      List<Derivation> top = ex.predDerivations.subList(0, 0);
+      List<Derivation> rest = ex.predDerivations.subList(0, size);
       if (kv.containsKey("random") && (boolean)kv.get("random")) {
         Collections.shuffle(rest);
       }

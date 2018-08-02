@@ -22,7 +22,7 @@ import argparse
 
 # parse command line args
 arg_parser = argparse.ArgumentParser()
-arg_parser.add_argument('--schema_path', default='vega-lite-v2.json')
+arg_parser.add_argument('--schema_path', default='vega-lite.json')
 arg_parser.add_argument('--out_path', default='visualize/data/vegalite')
 arg_parser.add_argument('--filter', default=('vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'data', 'facet'))
 
