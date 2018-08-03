@@ -168,10 +168,11 @@ public class JsonMaster extends Master {
       Example ex = exampleFromUtterance(utt, session);
       ex.targetValue = new JsonValue(targetValue);
       ex.context = VegaJsonContextValue.fromClientRequest(kv);
-      builder.parser.parse(builder.params, ex, true);
 
-      if (Master.opts.onlineLearnExamples)
+      if (Master.opts.onlineLearnExamples) {
+        builder.parser.parse(builder.params, ex, true);
         learner.onlineLearnExample(ex);
+      }
 
     } else if (command.equals("reject")) {
       /* Reject a plot.
