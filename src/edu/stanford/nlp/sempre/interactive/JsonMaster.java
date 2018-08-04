@@ -174,6 +174,7 @@ public class JsonMaster extends Master {
         builder.parser.parse(builder.params, ex, true);
         learner.onlineLearnExample(ex);
       }
+
     } else if (command.equals("reject")) {
       /* Reject a plot.
        *
