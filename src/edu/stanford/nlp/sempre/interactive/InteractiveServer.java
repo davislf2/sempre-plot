@@ -194,14 +194,14 @@ public class InteractiveServer {
     }
 
     Map<String, Object> makeJson(Master.Response response) {
-      Map<String, Object> json = new HashMap<String, Object>();
+      Map<String, Object> json = new HashMap<>();
       json.put("stats", response.stats);
-
+      json.put("master", response.masterResponse);
       if (response.lines != null) {
         json.put("lines", response.lines);
       }
       if (response.getExample() != null) {
-        List<Object> items = new ArrayList<Object>();
+        List<Object> items = new ArrayList<>();
         json.put("candidates", items);
         List<Derivation> allCandidates = response.getExample().getPredDerivations();
         if (allCandidates != null) {
@@ -223,7 +223,7 @@ public class InteractiveServer {
             if (value instanceof StringValue)
               item.put("value", ((StringValue) value).value);
             else if (value instanceof ErrorValue)
-              item.put("value", ((ErrorValue) value).sortString());
+              item.put("value", value.sortString());
             else if (value instanceof JsonValue)
               item.put("value", ((JsonValue) value).getJsonNode());
             else if (value != null)

@@ -53,6 +53,8 @@ public class Master {
     // Detailed information
     public Map<String, Object> stats = new LinkedHashMap<>();
     public List<String> lines = new ArrayList<>();
+    // Give control over how to respond to the master
+    public Object masterResponse;
 
     public String getFormulaAnswer() {
       if (ex.getPredDerivations().size() == 0)

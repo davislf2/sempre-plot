@@ -9,6 +9,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.Sets;
+import edu.stanford.nlp.sempre.Example;
+import edu.stanford.nlp.sempre.ExampleUtils;
 import org.testng.util.Strings;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -56,7 +58,7 @@ public class VegaResources {
   private static Map<String, Set<List<String>>> enumValueToPaths;
 
   private static Set<String> colorSet;
-  private static List<Map<String, Object>> examples;
+  private static List<Example> examples;
 
   public static final Set<String> CHANNELS = Sets.newHashSet("x", "y", "color", "opacity", "shape", "size", "row", "column");
   public static final Set<String> MARKS = Sets.newHashSet("area", "bar", "circle", "line", "point", "rect", "rule", "square", "text", "tick");
@@ -109,9 +111,17 @@ public class VegaResources {
       if (!Strings.isNullOrEmpty(opts.queryPath)) {
         Stream<String> stream = Files.lines(Paths.get(opts.queryPath));
         examples = stream.map(q -> Json.readMapHard(q)).filter(q -> ((List<?>)q.get("q")).get(0).equals("accept"))
-                .collect(Collectors.toList());
+                .map(q -> {
+                  Map<String, Object> jsonObj = ((List<Map<String, Object>>) q.get("q")).get(1);
+                  return new Example(
+                          (String) jsonObj.get("id"),
+                          (String) jsonObj.get("utterance"),
+                          new VegaJsonContextValue(jsonObj.get("context")),
+                          null,
+                          new JsonValue(jsonObj.get("targetValue")),
+                          null);
+                }).collect(Collectors.toList());
       }
-
     } catch (Exception ex) {
       ex.printStackTrace();
       throw new RuntimeException(ex);
@@ -244,8 +254,13 @@ public class VegaResources {
     return null;
   }
 
-  public static List<Map<String, Object>> getExamples() {
-    return examples;
+  public static void addExample(Example ex) {
+    examples.add(ex);
+  }
+
+  public static Example getExample() {
+    int index = ThreadLocalRandom.current().nextInt(examples.size());
+    return examples.get(index);
   }
 
   public static Set<String> getColorSet() {

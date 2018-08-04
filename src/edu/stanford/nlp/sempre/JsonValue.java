@@ -43,7 +43,7 @@ public class JsonValue extends Value {
     super();
     json = Json.getMapper().convertValue(jsonObj, JsonNode.class);
   }
-  
+
   @Override
   public String sortString() { return Json.writeValueAsStringHard(json); }
   @Override

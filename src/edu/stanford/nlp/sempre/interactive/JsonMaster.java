@@ -7,6 +7,9 @@ import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.Lists;
 import edu.stanford.nlp.sempre.*;
 import fig.basic.LogInfo;
 import fig.basic.Option;
@@ -27,7 +30,6 @@ public class JsonMaster extends Master {
 
     @Option(gloss = "allow regular commands specified in Master")
     public boolean allowRegularCommands = false;
-
     @Option(gloss = "initial training set")
     public String dataPath = "";
   }
@@ -105,11 +107,10 @@ public class JsonMaster extends Master {
       session.context = VegaJsonContextValue.fromClientRequest(kv);
 
       // Create the example
-      Example ex = exampleFromUtterance(utt, session);
+      Example ex = exampleFromUtterance(utt, VegaJsonContextValue.fromClientRequest(kv), session.id);
       builder.parser.parse(builder.params, ex, false);
       stats.size(ex.predDerivations != null ? ex.predDerivations.size() : 0);
       stats.status(InteractiveUtils.getParseStatus(ex));
-      session.updateContext();
       LogInfo.logs("parse stats: %s", response.stats);
 
       int size = ex.predDerivations.size();
@@ -140,7 +141,7 @@ public class JsonMaster extends Master {
       int amount = (int) kv.get("amount");
       VegaJsonContextValue context = VegaJsonContextValue.fromClientRequest(kv);
       session.context = context;
-      Example ex = exampleFromUtterance("", session);
+      Example ex = exampleFromUtterance("", context, session.id);
       VegaRandomizer randomizer = new VegaRandomizer(ex, builder);
       if (context.isInitialContext())
         response.ex = randomizer.generateInitial(amount);
@@ -165,14 +166,14 @@ public class JsonMaster extends Master {
        */
       String utt = (String) kv.get("utterance");
       Object targetValue = kv.get("targetValue");
-      Example ex = exampleFromUtterance(utt, session);
+      Example ex = exampleFromUtterance(utt, VegaJsonContextValue.fromClientRequest(kv), session.id);
       ex.targetValue = new JsonValue(targetValue);
-      ex.context = VegaJsonContextValue.fromClientRequest(kv);
-      builder.parser.parse(builder.params, ex, true);
+      VegaResources.addExample(ex);
 
-      if (Master.opts.onlineLearnExamples)
+      if (Master.opts.onlineLearnExamples) {
+        builder.parser.parse(builder.params, ex, true);
         learner.onlineLearnExample(ex);
-
+      }
     } else if (command.equals("reject")) {
       /* Reject a plot.
        *
@@ -186,7 +187,7 @@ public class JsonMaster extends Master {
        */
       // TODO
     } else if (command.equals("example")) {
-      /* Fetch an example specification
+      /* Fetch an example specification with some competing candidates
        *
        * Usage:
        *   ["example" {
@@ -194,15 +195,12 @@ public class JsonMaster extends Master {
        *     "amount": the number of examples to be fetched, return all when unspecified
        *   }]
        */
-      List<Map<String, Object>> examples = VegaResources.getExamples();
-      List<Map<String, Object>> randomExamples = new ArrayList<>(examples);
-      Collections.shuffle(randomExamples);
-      if (kv.containsKey("amount")) {
-        int amount = (int) kv.get("amount");
-        int size = randomExamples.size();
-        randomExamples = randomExamples.subList(0, amount > size ? size : amount);
-      }
-      response.lines = randomExamples.stream().map(ex -> Json.writeValueAsStringHard(ex)).collect(Collectors.toList());
+      Example ex = VegaResources.getExample();
+      ContextValue context = ex.context;
+      Example exRand = exampleFromUtterance("", context, session.id);
+      builder.parser.parse(builder.params, exRand, false);
+      response.ex = exRand;
+      response.masterResponse = jsonExampleSerializer(ex);
     } else if (command.equals("log")) {
       /* Used to log information that is not acted upon
        * Usage: ["log", object]
@@ -212,11 +210,20 @@ public class JsonMaster extends Master {
     }
   }
 
-  private static Example exampleFromUtterance(String utt, Session session) {
+  private JsonNode jsonExampleSerializer(Example ex) {
+    ObjectNode node = Json.getMapper().createObjectNode();
+    node.put("targetValue", ((JsonValue) ex.targetValue).getJsonNode());
+    node.put("context", ((VegaJsonContextValue) ex.context).getJsonNode());
+    node.put("utterance", ex.utterance);
+    node.put("id", ex.id);
+    return node;
+  }
+
+  private static Example exampleFromUtterance(String utt, ContextValue context, String id) {
     Example.Builder b = new Example.Builder();
-    b.setId(session.id);
+    b.setId(id);
     b.setUtterance(utt);
-    b.setContext(session.context);
+    b.setContext(context);
     Example ex = b.createExample();
     ex.preprocess();
     return ex;
