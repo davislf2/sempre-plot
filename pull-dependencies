@@ -305,7 +305,7 @@ addModule('geo880', 'Data, lexicon, grammars and KB for geo880', lambda {
 })
 
 addModule('plot', 'data for sempre-plot using vega', lambda {
-  updateGit('https://github.com/stanfordnlp/plot-data')
+  updateGit('ssh://git@github.com/stanfordnlp/plot-data.git')
 })
 ############################################################
 

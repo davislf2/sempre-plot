@@ -148,7 +148,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('VegaResources.excludedContextPaths', '\'$schema\'', 'encoding', 'condition', 'selection', 'transform', 'data', 'geoshape'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
   o('VegaResources.initialTemplates', "./#{$path}/initial-templates.json"),
-  o('VegaResources.queryPath', "./plot-data/filtered.jsonl"),
+  o('VegaResources.queryPath', "./plot-data/output/turk20180810.f.json"),
   o('VegaEngine.verbose', 0),
   o('VegaExecutor.compileVega', false),
 
