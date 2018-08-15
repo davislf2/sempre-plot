@@ -153,13 +153,12 @@ public class JsonMaster extends Master {
        *
        * Usage:
        *   ["accept", {
-       *     "type": type (string),
+       *     "type": label | pick (string),
        *     "utterance": utterance (string),
        *     "context": Vega-lite context (object),
        *     "schema": schema map (object),
        *     "targetValue": targetValue (...),
        *     "targetFormula": targetFormula (...),
-       *     "issuedQuery": issuedQuery (string; only for type = label),
        *   }]
        *
        * Using lastExample seems unreliable, different tabs etc.
@@ -175,9 +174,8 @@ public class JsonMaster extends Master {
         learner.onlineLearnExample(ex);
       }
 
-    } else if (command.equals("reject")) {
-      /* Reject a plot.
-       *
+    } else if (command.equals("pick")) {
+      /* Pick, basically like accept
        * Usage:
        *   ["reject", {
        *     "utterance": utterance (string),
@@ -197,10 +195,6 @@ public class JsonMaster extends Master {
        *   }]
        */
       Example ex = VegaResources.getExample();
-      ContextValue context = ex.context;
-      Example exRand = exampleFromUtterance("", context, session.id);
-      builder.parser.parse(builder.params, exRand, false);
-      response.ex = exRand;
       response.masterResponse = jsonExampleSerializer(ex);
     } else if (command.equals("log")) {
       /* Used to log information that is not acted upon

@@ -144,11 +144,11 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
 
   o('VegaResources.vegaSchema', "./#{$path}/vega-lite.json"),
   # escape $schema because of bash
-  o('VegaResources.excludedPaths', '\'$schema\'', 'vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'transform', 'data', 'facet', 'geoshape'),
+  o('VegaResources.excludedPaths', '\'$schema\'', 'vconcat', 'hconcat', 'layer', 'spec', 'repeat', 'condition', 'selection', 'transform', 'data', 'facet', 'geoshape', 'geojson', 'impute'),
   o('VegaResources.excludedContextPaths', '\'$schema\'', 'encoding', 'condition', 'selection', 'transform', 'data', 'geoshape'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
   o('VegaResources.initialTemplates', "./#{$path}/initial-templates.json"),
-  o('VegaResources.queryPath', "./plot-out/query.jsonl"),
+  o('VegaResources.queryPath', "./plot-data/filtered.jsonl"),
   o('VegaEngine.verbose', 0),
   o('VegaExecutor.compileVega', false),
 

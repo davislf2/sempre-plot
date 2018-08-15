@@ -98,7 +98,7 @@ public class JsonFn extends SemanticFn {
           .withCallable(callable)
           .formula(setFormula)
           .createDerivation();
-      deriv.canonicalUtterance = String.format("set %s to %s", String.join(" ", VegaExecutor.stringToPath(jsonPath)), value.getJsonNode().asText());
+      deriv.canonicalUtterance = String.format("%s: %s", String.join(" ", VegaExecutor.stringToPath(jsonPath)), value.getJsonNode().asText());
       return deriv;
     }
 

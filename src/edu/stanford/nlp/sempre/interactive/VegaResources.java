@@ -9,8 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.Sets;
-import edu.stanford.nlp.sempre.Example;
-import edu.stanford.nlp.sempre.ExampleUtils;
+import edu.stanford.nlp.sempre.*;
 import org.testng.util.Strings;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -18,8 +17,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
 
-import edu.stanford.nlp.sempre.Json;
-import edu.stanford.nlp.sempre.JsonValue;
 import fig.basic.IOUtils;
 import fig.basic.LogInfo;
 import fig.basic.MapUtils;
@@ -111,16 +108,17 @@ public class VegaResources {
       if (!Strings.isNullOrEmpty(opts.queryPath)) {
         Stream<String> stream = Files.lines(Paths.get(opts.queryPath));
         examples = stream.map(q -> Json.readMapHard(q)).filter(q -> ((List<?>)q.get("q")).get(0).equals("accept"))
-                .map(q -> {
-                  Map<String, Object> jsonObj = ((List<Map<String, Object>>) q.get("q")).get(1);
-                  return new Example(
-                          (String) jsonObj.get("id"),
-                          (String) jsonObj.get("utterance"),
-                          new VegaJsonContextValue(jsonObj.get("context")),
-                          null,
-                          new JsonValue(jsonObj.get("targetValue")),
-                          null);
-                }).collect(Collectors.toList());
+          .map(q -> {
+            Map<String, Object> jsonObj = ((List<Map<String, Object>>) q.get("q")).get(1);
+            String queryId = q.containsKey("queryId")? (String) q.get("queryId"): (String) q.get("sessionId") + q.get("count");
+            return new Example(
+                    queryId,
+                    (String) jsonObj.get("utterance"),
+                    new VegaJsonContextValue(jsonObj.get("context")),
+                    null,
+                    new JsonValue(jsonObj.get("targetValue")),
+                    null);
+          }).collect(Collectors.toList());
       }
     } catch (Exception ex) {
       ex.printStackTrace();
@@ -207,35 +205,39 @@ public class VegaResources {
           LogInfo.logs("getValues %s %s", type, path.toString());
 
         List<String> simplePath = schema.simplePath();
-        String last = simplePath.get(simplePath.size() - 1);
+        String last = simplePath.get(simplePath.size() - 1).toLowerCase();
         if (type.equals(JsonSchema.NOTYPE)) {
           continue;
         } else if (type.equals("string")) {
-          if (last.endsWith("color") || last.endsWith("Color")
-            || last.equals("fill")
-            || last.equals("stroke") || last.equals("background")) {
-            values.add(new JsonValue("red").withSchemaType("string"));
-            values.add(new JsonValue("blue").withSchemaType("string"));
-            values.add(new JsonValue("green").withSchemaType("string"));
+          if (last.endsWith("color")
+                  || last.equals("fill")
+                  || last.equals("stroke") || last.equals("background")) {
+            String[] valueSet = {"red", "blue", "green"};
+            for (String pick: valueSet) {
+              values.add(new JsonValue(pick).withSchemaType("string"));
+            }
           } else if (last.equals("field")) {
 //            values.add(new JsonValue("fieldName").withSchemaType("string"));
-          } else if(last.endsWith("font") || last.endsWith("Font")) {
-            values.add(new JsonValue("times").withSchemaType("string"));
-            values.add(new JsonValue("monaco").withSchemaType("string"));
-            values.add(new JsonValue("cursive").withSchemaType("string"));
+          } else if (last.endsWith("font")) {
+            String[] valueSet = {"times", "monaco", "cursive"};
+            for (String pick: valueSet) {
+              values.add(new JsonValue(pick).withSchemaType("string"));
+            }
           } else if (schema.isEnum()) {
             values.addAll(schema.enums().stream().map(s -> new JsonValue(s).withSchemaType("enum"))
-              .collect(Collectors.toList()));
+                    .collect(Collectors.toList()));
           } else {
-            values.add(new JsonValue("XXYYZZ").withSchemaType(type));
+            values.add(new JsonValue("XYZ").withSchemaType(type));
           }
         } else if (type.equals("boolean")) {
           values.add(new JsonValue(true).withSchemaType("boolean"));
           values.add(new JsonValue(false).withSchemaType("boolean"));
         } else if (type.equals("number")) {
-          int max = schema.node().has("maximum")? schema.node().get("maximum").asInt() : 100;
-          int min = schema.node().has("minimum")? schema.node().get("minimum").asInt() : 0;
-          int grids = 32;
+          int max = schema.node().has("maximum") ? schema.node().get("maximum").asInt() : 100;
+          int min = schema.node().has("minimum") ? schema.node().get("minimum").asInt() : 0;
+          if (last.endsWith("opacity"))
+            max = 1;
+          int grids = 8;
           double numberValue = ThreadLocalRandom.current().nextInt(0, grids) * 1.0 / grids * (max - min) + min;
           if (numberValue > 1 || numberValue < -1)
             values.add(new JsonValue((int) numberValue).withSchemaType("number"));
@@ -244,7 +246,6 @@ public class VegaResources {
         }
       }
     }
-
     if (values.size() == 0) return values;
     return Lists.newArrayList(values.get(ThreadLocalRandom.current().nextInt(values.size())));
   }
@@ -255,7 +256,7 @@ public class VegaResources {
   }
 
   public static void addExample(Example ex) {
-    examples.add(ex);
+//    examples.add(ex);
   }
 
   public static Example getExample() {

@@ -179,8 +179,6 @@ public class VegaRandomizer {
             new ValueFormula<JsonValue>(value)));
     Derivation deriv = new Derivation.Builder()
         .formula(setFormula).createDerivation();
-    CanonicalUtteranceGenerator cuGenerator = new CanonicalUtteranceGenerator(String.join(" ", path), value.getJsonNode().toString());
-    deriv.canonicalUtterance = cuGenerator.getSimpleCanonicalUtterance();
     deriv.ensureExecuted(builder.executor, context);
     return deriv;
   }

@@ -1,11 +1,13 @@
 package edu.stanford.nlp.sempre.interactive;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.net.HttpCookie;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -37,6 +39,13 @@ import fig.basic.LogInfo;
 import fig.basic.MapUtils;
 import fig.basic.Option;
 
+final class SecureIdentifiers {
+  private SecureIdentifiers() { }
+  private static SecureRandom random = new SecureRandom();
+  public static String getId() {
+    return new BigInteger(130, random).toString(32);
+  }
+}
 /**
  * JsonServer, interactive learning queries run through this. All the logs are
  * handled here.
@@ -285,6 +294,7 @@ public class InteractiveServer {
       synchronized (queryLogLock) { // write the query log
         Map<String, Object> jsonMap = new LinkedHashMap<>();
         jsonMap.put("count", queryNumber);
+        jsonMap.put("queryId", SecureIdentifiers.getId());
         jsonMap.put("startTime", startTime);
         if (opts.isJsonQuery)
           jsonMap.put("q", Json.readValueHard(query, ArrayList.class));
@@ -335,7 +345,10 @@ public class InteractiveServer {
         jsonMap.put("time", queryTime.toString());
         jsonMap.put("ms", String.format("%.3f", java.time.Duration.between(queryTime, responseTime).toNanos() / 1.0e6));
         jsonMap.put("sessionId", sessionId);
-        jsonMap.put("q", query); // backwards compatibility...
+        if (opts.isJsonQuery)
+          jsonMap.put("q", Json.readValueHard(query, ArrayList.class));
+        else
+          jsonMap.put("q", query);
         jsonMap.put("lines", responseMap.get("lines"));
         if (session.isLogging()) {
           logLine(opts.responseLogPath, Json.writeValueAsStringHard(jsonMap));
