@@ -378,23 +378,6 @@ public class InteractiveServer {
         e.printStackTrace();
       }
     }
-
-    private synchronized List<Derivation> truncateCandidates(List<Derivation> all, int size) {
-      List<Derivation> keep = new ArrayList<>();
-      Random rand = new Random();
-      for (int i = 0; i < all.size(); i++) {
-        Derivation deriv = all.get(i);
-        if (i < 3 || deriv.getProb() > 0.1) {
-          keep.add(deriv);
-        }
-      }
-      while (keep.size() < size) {
-        Derivation deriv = all.get(rand.nextInt(all.size()));
-        //if (deriv.getProb() > rand.nextDouble())
-        keep.add(deriv);
-      }
-      return keep;
-    }
   }
 
   private void logs(String s, Object... args) {
