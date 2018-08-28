@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 
 import com.google.common.collect.Sets;
 import edu.stanford.nlp.sempre.*;
+import fig.exec.Execution;
 import org.testng.util.Strings;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -39,11 +40,11 @@ public class VegaResources {
     @Option(gloss = "Paths in the context that are not considered for removals") Set<String> excludedContextPaths;
     @Option(gloss = "File containing all the colors") String colorFile;
     @Option(gloss = "File containing initial plot templates") String initialTemplates;
-    @Option(gloss = "Path to a log of queries") String queryPath;
+    @Option(gloss = "Path to a log of queries") String examplesPath;
     @Option(gloss = "verbosity") int verbose = 0;
   }
   public static Options opts = new Options();
-  private final Path savePath = Paths.get(JsonMaster.opts.intOutputPath, "vegaResource");
+  private final String savePath = Execution.getFile("vega");
 
   public static VegaLitePathMatcher allPathsMatcher;
   private static List<List<String>> filteredPaths;
@@ -77,18 +78,18 @@ public class VegaResources {
       List<JsonSchema> allDescendants = vegaSchema.descendants();
       descendants = allDescendants.stream().filter(s -> s.node().has("type")).collect(Collectors.toList());
       LogInfo.logs("Got %d descendants, %d typed", allDescendants.size(), descendants.size());
-      Json.prettyWriteValueHard(new File(savePath.toString()+".nodes.json"),
+      Json.prettyWriteValueHard(new File(savePath+".nodes.json"),
         descendants.stream().map(t -> t.node()).collect(Collectors.toList()));
 
       filteredPaths = allSimplePaths(descendants);
       LogInfo.logs("Got %d distinct simple path not containing %s", filteredPaths.size(), opts.excludedPaths);
       allPathsMatcher = new VegaLitePathMatcher(filteredPaths);
-      Json.prettyWriteValueHard(new File(savePath.toString()+".simplePaths.json"), filteredPaths);
+      Json.prettyWriteValueHard(new File(savePath+".simplePaths.json"), filteredPaths);
 
       // generate valueToTypes and valueToSet, for enum types
       generateValueMaps();
       LogInfo.logs("gathering valueToTypes: %d distinct enum values", enumValueToTypes.size());
-      Json.prettyWriteValueHard(new File(savePath.toString()+".enums.json"),
+      Json.prettyWriteValueHard(new File(savePath+".enums.json"),
         enumValueToTypes.keySet().stream().collect(Collectors.toList())
       );
 
@@ -105,12 +106,12 @@ public class VegaResources {
         LogInfo.logs("Read %d initial templates", initialTemplates.size());
       }
 
-      if (!Strings.isNullOrEmpty(opts.queryPath)) {
-        Stream<String> stream = Files.lines(Paths.get(opts.queryPath));
+      if (!Strings.isNullOrEmpty(opts.examplesPath)) {
+        Stream<String> stream = Files.lines(Paths.get(opts.examplesPath));
         examples = stream.map(q -> Json.readMapHard(q)).filter(q -> ((List<?>)q.get("q")).get(0).equals("accept"))
           .map(q -> {
             Map<String, Object> jsonObj = ((List<Map<String, Object>>) q.get("q")).get(1);
-            String queryId = q.containsKey("queryId")? (String) q.get("queryId"): (String) q.get("sessionId") + q.get("count");
+            String queryId = q.containsKey("queryId")? (String) q.get("queryId"): (String) q.get("sessionId") + q.get("time") + q.get("count");
             return new Example(
                     queryId,
                     (String) jsonObj.get("utterance"),

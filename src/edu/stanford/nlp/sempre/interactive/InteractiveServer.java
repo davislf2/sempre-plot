@@ -38,6 +38,7 @@ import fig.basic.IOUtils;
 import fig.basic.LogInfo;
 import fig.basic.MapUtils;
 import fig.basic.Option;
+import fig.exec.Execution;
 
 final class SecureIdentifiers {
   private SecureIdentifiers() { }
@@ -63,12 +64,6 @@ public class InteractiveServer {
     @Option
     public int maxCandidates = Integer.MAX_VALUE;
     @Option
-    public String queryLogPath = "./int-output/query.log";
-    @Option
-    public String responseLogPath = "./int-output/response.log";
-    @Option
-    public String fullResponseLogPath;
-    @Option
     public int maxExecutionTime = 10; // in seconds
     @Option(gloss="if the query is already in json, then parse it instead of storing an escaped string")
     public boolean isJsonQuery = false;
@@ -80,6 +75,7 @@ public class InteractiveServer {
   private static Object responseLogLock = new Object();
   private static AtomicLong queryCounter = new AtomicLong();
   private static String startTime = LocalDateTime.now().toString();
+
   Master master;
 
   class Handler implements HttpHandler {
@@ -295,29 +291,22 @@ public class InteractiveServer {
         Map<String, Object> jsonMap = new LinkedHashMap<>();
         jsonMap.put("count", queryNumber);
         jsonMap.put("queryId", SecureIdentifiers.getId());
-        jsonMap.put("startTime", startTime);
-        if (opts.isJsonQuery)
-          jsonMap.put("q", Json.readValueHard(query, ArrayList.class));
-        else
-          jsonMap.put("q", query);
-        
         jsonMap.put("remote", remoteHost);
         jsonMap.put("time", queryTime.toString());
         jsonMap.put("sessionId", sessionId);
+        jsonMap.put("q", Json.readValueHard(query, ArrayList.class));
         reqParams.remove("q");
         jsonMap.putAll(reqParams);
         if (session.isLogging()) {
-          logLine(opts.queryLogPath, Json.writeValueAsStringHard(jsonMap));
+          logLine("query.jsonl", Json.writeValueAsStringHard(jsonMap));
         } else {
-          logLine(opts.queryLogPath + ".sandbox", Json.writeValueAsStringHard(jsonMap));
+          logLine("query.sandbox", Json.writeValueAsStringHard(jsonMap));
         }
       }
 
       // If JSON, don't store cookies.
-
       if (query == null)
         query = "null";
-      logs("Server.handleQuery %s: %s", session.id, query);
 
       // Print header
       setHeaders("application/json");
@@ -351,37 +340,25 @@ public class InteractiveServer {
           jsonMap.put("q", query);
         jsonMap.put("lines", responseMap.get("lines"));
         if (session.isLogging()) {
-          logLine(opts.responseLogPath, Json.writeValueAsStringHard(jsonMap));
-          if (!Strings.isNullOrEmpty(opts.fullResponseLogPath)) {
-            jsonMap.put("candidates", responseMap.get("candidates"));
-            logLine(opts.fullResponseLogPath, Json.writeValueAsStringHard(jsonMap));
-          }
+          logLine("response.jsonl", Json.writeValueAsStringHard(jsonMap));
         } else {
-          logLine(opts.responseLogPath + ".sandbox", Json.writeValueAsStringHard(jsonMap));
-          if (!Strings.isNullOrEmpty(opts.fullResponseLogPath)) {
-            jsonMap.put("candidates", responseMap.get("candidates"));
-            logLine(opts.fullResponseLogPath + ".sandbox", Json.writeValueAsStringHard(jsonMap));
-          }
-          // LogInfo.log(Json.writeValueAsStringHard(jsonMap));
+          logLine("response.sandbox.jsonl", Json.writeValueAsStringHard(jsonMap));
         }
       }
     }
 
-    void logLine(String path, String line) {
+    void logLine(String file, String line) {
       PrintWriter out;
+      String path = Execution.getFile(file);
       try {
-        out = IOUtils.openOutAppend(path);
+        out = IOUtils.openOutAppend(path); // inefficient, don't care
         out.println(line);
         out.close();
       } catch (IOException e) {
-        // TODO Auto-generated catch block
         e.printStackTrace();
       }
     }
   }
-
-  private void logs(String s, Object... args) {
-  };
 
   public InteractiveServer(Master master) {
     this.master = master;

@@ -129,13 +129,9 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('Params.adaptiveStepSize', true),
   o('Params.stepSizeReduction', 0.25),
 
-  o('JsonMaster.intOutputPath', './plot-out/'),
   o('InteractiveServer.numThreads', 8),
   o('InteractiveServer.maxCandidates', 100),
-  o('InteractiveServer.queryLogPath', './plot-out/query.jsonl'),
-  o('InteractiveServer.responseLogPath', './plot-out/response.jsonl'),
   o('InteractiveServer.port', 8405),
-  o('InteractiveServer.isJsonQuery', true),
 
   o('Derivation.showTypes', false),
   o('Derivation.showValues', false),
@@ -148,7 +144,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('VegaResources.excludedContextPaths', '\'$schema\'', 'encoding', 'condition', 'selection', 'transform', 'data', 'geoshape'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
   o('VegaResources.initialTemplates', "./#{$path}/initial-templates.json"),
-  o('VegaResources.queryPath', "./plot-data/output/turk20180810.f.json"),
+  o('VegaResources.examplesPath', "./plot-data/output/turk20180810/filtered.jsonl"),
   o('VegaEngine.verbose', 0),
   o('VegaExecutor.compileVega', false),
 
@@ -165,9 +161,6 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
     'pathPattern', 'valueType', 'lexPathPattern', 'lexValueType'),
 
   o('Learner.maxTrainIters', 0),
-
-  lambda { |e| system 'mkdir -p ./plot-out/'; nil},
-  lambda { |e| system 'mkdir -p ./plot-out/log/'; nil},
 nil) })
 ############################################################
 
