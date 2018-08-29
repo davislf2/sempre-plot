@@ -121,6 +121,11 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('ParserState.customExpectedCounts', 'None'),
   o('Parser.derivationScoreNoise', 0.0),
 
+
+  o('Parser.printAllPredictions', false),
+  o('Parser.maxPrintedPredictions', 50),
+  o('Parser.maxPrintedTrue', 50),
+
   o('Params.initWeightsRandomly', false),
   o('Params.l1Reg', 'nonlazy'),
   o('Params.l1RegCoeff', 0.0001),
@@ -144,7 +149,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('VegaResources.excludedContextPaths', '\'$schema\'', 'encoding', 'condition', 'selection', 'transform', 'data', 'geoshape'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
   o('VegaResources.initialTemplates', "./#{$path}/initial-templates.json"),
-  o('VegaResources.examplesPath', "./plot-data/output/turk20180810/filtered.jsonl"),
+  o('VegaResources.examplesPath', "./plot-data/hit/speaker.filtered.jsonl"),
   o('VegaEngine.verbose', 0),
   o('VegaExecutor.compileVega', false),
 
