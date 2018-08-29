@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -67,7 +68,6 @@ public class InteractiveServer {
     public int maxExecutionTime = 10; // in seconds
     @Option(gloss="if the query is already in json, then parse it instead of storing an escaped string")
     public boolean isJsonQuery = false;
-    @Option public String basePath = "plot-out";
   }
 
   public static Options opts = new Options();
@@ -155,7 +155,7 @@ public class InteractiveServer {
       if (uriPath.equals("/sempre")) {
         handleQuery(sessionId);
       } else {
-        getFile(opts.basePath + uriPath);
+        getFile(Paths.get("state", uriPath).toString());
       }
       exchange.close();
     }
