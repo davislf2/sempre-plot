@@ -105,7 +105,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
 
   o('Grammar.binarizeRules', false),
   o('Grammar.useApplyFn', 'interactive.ApplyFn'),
-  o('Grammar.tags', 'doublestar', 'init-plot'),
+  o('Grammar.tags', 'doublestar'),
 
   o('LanguageAnalyzer.lowerCaseTokens', false),
 
@@ -120,11 +120,9 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('Parser.beamSize', 10000),
   o('ParserState.customExpectedCounts', 'None'),
   o('Parser.derivationScoreNoise', 0.0),
-
-
   o('Parser.printAllPredictions', false),
-  o('Parser.maxPrintedPredictions', 50),
-  o('Parser.maxPrintedTrue', 50),
+  o('Parser.maxPrintedPredictions', 10),
+  o('Parser.maxPrintedTrue', 10),
 
   o('Params.initWeightsRandomly', false),
   o('Params.l1Reg', 'nonlazy'),
@@ -149,7 +147,7 @@ addMode('plot', 'interactive semantic parsing for plotting', lambda { |e| l(
   o('VegaResources.excludedContextPaths', '\'$schema\'', 'encoding', 'condition', 'selection', 'transform', 'data', 'geoshape'),
   o('VegaResources.colorFile', "./#{$path}/css-color-names.json"),
   o('VegaResources.initialTemplates', "./#{$path}/initial-templates.json"),
-  o('VegaResources.examplesPath', "./plot-data/hit/speaker.filtered.jsonl"),
+  o('VegaResources.examplesPath', "./plot-data/hits/"),
   o('VegaEngine.verbose', 0),
   o('VegaExecutor.compileVega', false),
 

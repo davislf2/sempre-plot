@@ -82,6 +82,9 @@ public class JsonMaster extends Master {
   void handleCommand(Session session, String line, Response response) {
     List<Object> args = Json.readValueHard(line, List.class);
     String command = (String) args.get(0);
+    if (!(args.get(1) instanceof Map)) {
+      LogInfo.logs("JsonMaster.handleCommand invalid argument: %s", line);
+    }
     Map<String, Object> kv = (Map<String, Object>) args.get(1);
     QueryStats stats = new QueryStats(response, command);
 
@@ -167,24 +170,12 @@ public class JsonMaster extends Master {
       Object targetValue = kv.get("targetValue");
       Example ex = exampleFromUtterance(utt, VegaJsonContextValue.fromClientRequest(kv), session.id);
       ex.targetValue = new JsonValue(targetValue);
-      VegaResources.addExample(ex);
 
       if (Master.opts.onlineLearnExamples) {
         builder.parser.parse(builder.params, ex, true);
         learner.onlineLearnExample(ex);
       }
 
-    } else if (command.equals("pick")) {
-      /* Pick, basically like accept
-       * Usage:
-       *   ["reject", {
-       *     "utterance": utterance (string),
-       *     "context": Vega-lite context (object),
-       *     "schema": schema map (object),
-       *     "targetValue": targetValue (...),
-       *   }]
-       */
-      // TODO
     } else if (command.equals("example")) {
       /* Fetch an example specification with some competing candidates
        *

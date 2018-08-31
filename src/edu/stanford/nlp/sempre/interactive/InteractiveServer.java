@@ -244,7 +244,7 @@ public class InteractiveServer {
 
             items.add(item);
           }
-          LogInfo.logs("Server: %d / %d error values", errorValueCount, allCandidates.size());
+          LogInfo.logsForce("Server: %d / %d error values", errorValueCount, allCandidates.size());
         }
       }
       return json;

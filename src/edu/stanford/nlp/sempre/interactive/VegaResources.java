@@ -257,7 +257,7 @@ public class VegaResources {
   }
 
   public static void addExample(Example ex) {
-//    examples.add(ex);
+    examples.add(ex);
   }
 
   public static Example getExample() {
