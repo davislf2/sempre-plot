@@ -76,12 +76,12 @@ public class JsonFn extends SemanticFn {
 
       if (valueFormula instanceof ValueFormula) {
         if ("*".equals(Formulas.getString(valueFormula))) {
-          values = VegaResources.getValues(path, null);
+          values = VegaResources.getValues(path, null, true);
         } else if (JsonValue.UNDEFINED.equals(Formulas.getString(valueFormula))) {
           values = Lists.newArrayList(new JsonValue(valueFormula).withSchemaType(JsonValue.UNDEFINED));
         } else {
           JsonValue v = (JsonValue)((ValueFormula)valueFormula).value;
-          values = VegaResources.getValues(path, v);
+          values = VegaResources.getValues(path, v, false);
         }
       } else {
         throw new RuntimeException("Invalid valueFormula: " + valueFormula);

@@ -115,45 +115,50 @@ public class JsonSchema implements Comparable<JsonSchema> {
     return schemaPath;
   }
 
+  /**
+   * says enum, the kind of object, and what array we have
+   * @return
+   */
   public String type() {
     if (!node.has("type")) {
       throw new RuntimeException("No 'type'.");
     }
-    return node.get("type").asText();
+    String type = node.get("type").asText();
+    if (this.isEnum()) {
+      type = "enum";
+    } else if (type.equals("array")) {
+      List<JsonSchema> items = schemas("items");
+      assert(items.size() == 1);
+      String innerType = items.get(0).type();
+      type = String.format("array<%s>", innerType);
+    } else if (type.equals("object")) {
+      return objectName();
+    }
+
+    return type;
   }
 
-
-  private List<String> simplePathWithDef(List<String> path) {
-    if (path.size() == 0) return new ArrayList<>();
-    int lastInd = path.size() - 1;
-    for (; lastInd > 0; lastInd--) {
-      if (path.get(lastInd).startsWith("#/definitions"))
-        break;
+  private String objectName() {
+    String last = this.schemaPath().get(this.schemaPath().size() - 1);
+    if (last.startsWith("#/")) {
+      return last.replace("#/definitions/", "#/");
     }
-    return path.subList(lastInd, path.size() ).stream()
-        .filter(p -> !p.equals("items") && !p.equals("properties") && !p.startsWith("anyOf["))
-        .map(s -> s.replace("#/definitions/", "#/"))
-        .collect(Collectors.toList());
+    return "object";
   }
 
   public List<String> types() {
     if (!node.has("type")) {
       throw new RuntimeException("type of " + schemaPath + " is an empty string.");
     }
-    if (node.get("type").isArray()) {
-      // can be one of several type
+    JsonNode type = node.get("type");
+    if (type.isArray()) {
       List<String> types = new ArrayList<>();
-      for (JsonNode child : node.get("type")) {
+      for (JsonNode child : type) {
         types.add(child.asText());
       }
       return types;
     }
-
-    String type = node.get("type").asText();
-    // TODO: handle arrays properly
-
-
-    return Lists.newArrayList(type);
+    return Lists.newArrayList(this.type());
   }
 
   public boolean isEnum() {
@@ -213,7 +218,7 @@ public class JsonSchema implements Comparable<JsonSchema> {
         schemaSet.add(this);
       } else {
         // more keys left to traverse
-        String type = type();
+        String type = node.get("type").asText();
         String key = path.get(0);
 
         JsonSchema sub_schema = null;

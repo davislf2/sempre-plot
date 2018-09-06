@@ -92,10 +92,11 @@ public class JsonUtils  {
     for (String name : objectPath) {
       if (name.endsWith("]"))
         throw new RuntimeException("not implemented: assign value to array");
-      if (!node.has(name))
-        node = node.putObject(name);
-      else {
+
+      if (node.has(name) && node.get(name) instanceof ObjectNode){
         node = (ObjectNode)node.get(name);
+      } else {
+        node = node.putObject(name);
       }
     }
 

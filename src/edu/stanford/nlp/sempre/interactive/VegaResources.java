@@ -1,13 +1,15 @@
 package edu.stanford.nlp.sempre.interactive;
 
-
 import java.io.File;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.node.DoubleNode;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.google.common.collect.Sets;
 import edu.stanford.nlp.sempre.*;
 import fig.exec.Execution;
@@ -20,7 +22,6 @@ import com.google.common.collect.Lists;
 
 import fig.basic.IOUtils;
 import fig.basic.LogInfo;
-import fig.basic.MapUtils;
 import fig.basic.Option;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -78,20 +79,33 @@ public class VegaResources {
       List<JsonSchema> allDescendants = vegaSchema.descendants();
       descendants = allDescendants.stream().filter(s -> s.node().has("type")).collect(Collectors.toList());
       LogInfo.logs("Got %d descendants, %d typed", allDescendants.size(), descendants.size());
-      Json.prettyWriteValueHard(new File(savePath+".nodes.json"),
-        descendants.stream().map(t -> t.node()).collect(Collectors.toList()));
 
       filteredPaths = allSimplePaths(descendants);
       LogInfo.logs("Got %d distinct simple path not containing %s", filteredPaths.size(), opts.excludedPaths);
       allPathsMatcher = new VegaLitePathMatcher(filteredPaths);
       Json.prettyWriteValueHard(new File(savePath+".simplePaths.json"), filteredPaths);
 
-      // generate valueToTypes and valueToSet, for enum types
-      generateValueMaps();
-      LogInfo.logs("gathering valueToTypes: %d distinct enum values", enumValueToTypes.size());
-      Json.prettyWriteValueHard(new File(savePath+".enums.json"),
-        enumValueToTypes.keySet().stream().collect(Collectors.toList())
-      );
+      // a serialization of the action space
+      int totalValues = 0;
+      List<Object> pathsToValues = new ArrayList<>();
+      for (List<String> simplePath: filteredPaths) {
+        List<JsonSchema> schemas = vegaSchema.schemas(simplePath);
+        Map<String, Object> pathToSummary = new HashMap<>();
+        pathToSummary.put("path", simplePath);
+        ArrayList<String> types = new ArrayList<>();
+        pathToSummary.put("types", types);
+        List<JsonNode> values = getValues(simplePath, null, false).stream().map(jv -> jv.getJsonNode()).collect(Collectors.toList());
+        pathToSummary.put("values", values);
+        totalValues += values.size();
+        for (JsonSchema schema: schemas) {
+          for (String type: schema.types()) {
+            types.add(type);
+          }
+        }
+        pathsToValues.add(pathToSummary);
+      }
+      LogInfo.logs("Action space contains %d values", totalValues);
+      Json.prettyWriteValueHard(new File(savePath+".actions.json"), pathsToValues);
 
       if (!Strings.isNullOrEmpty(opts.colorFile)) {
         colorSet = Json.readMapHard(String.join("\n", IOUtils.readLines(opts.colorFile))).keySet();
@@ -132,22 +146,8 @@ public class VegaResources {
       .map(s -> s.simplePath()).collect(Collectors.toCollection(LinkedHashSet::new));
     LogInfo.logs("Got %d distinct simple paths", simplePaths.size());
 
-    return simplePaths.stream().filter(p -> p.stream().allMatch(s -> !opts.excludedPaths.contains(s)))
+    return simplePaths.stream().filter(p -> !p.isEmpty() && p.stream().allMatch(s -> !opts.excludedPaths.contains(s)))
         .collect(Collectors.toList());
-  }
-
-  private void generateValueMaps() {
-    Set<JsonSchema> descendentsSet = descendants.stream().collect(Collectors.toSet());
-    enumValueToTypes = new HashMap<>();
-    enumValueToPaths = new HashMap<>();
-    for (JsonSchema schema: descendentsSet) {
-      if (schema.enums() != null) {
-        for (String e : schema.enums()) {
-          MapUtils.addToSet(enumValueToTypes, e, schema.types().get(0));
-          MapUtils.addToSet(enumValueToPaths, e, schema.simplePath());
-        }
-      }
-    }
   }
 
   private static boolean checkType(List<String> path, JsonValue value) {
@@ -190,7 +190,13 @@ public class VegaResources {
     return false;
   }
 
-  public static List<JsonValue> getValues(List<String> path, JsonValue value) {
+  private static void addValues(List<JsonValue> values, String[] valueArray, String type) {
+    for (String pick: valueArray) {
+      values.add(new JsonValue(pick).withSchemaType(type));
+    }
+  }
+
+  public static List<JsonValue> getValues(List<String> path, JsonValue value, boolean sample) {
     if (value != null) {
       if (checkType(path, value)) {
         return Lists.newArrayList(value);
@@ -198,57 +204,75 @@ public class VegaResources {
         return Lists.newArrayList();
       }
     }
-    List<JsonValue> values = new ArrayList<>();
+
+    Set<JsonValue> values = new HashSet<>();
     List<JsonSchema> schemas = vegaSchema.schemas(path);
+    String[] colors = {"red", "blue", "green"};
+
     for (JsonSchema schema : schemas) {
       for (String type : schema.types()) {
+        List<JsonValue> schemaValues = new ArrayList<>();
         if (opts.verbose > 0)
           LogInfo.logs("getValues %s %s", type, path.toString());
 
         List<String> simplePath = schema.simplePath();
-        String last = simplePath.get(simplePath.size() - 1).toLowerCase();
+        String lastFull = simplePath.size() == 0? "$" : simplePath.get(simplePath.size() - 1);
+        String last = lastFull.toLowerCase();
         if (type.equals(JsonSchema.NOTYPE)) {
           continue;
+        }
+        if (schema.isEnum()) {
+          schemaValues.addAll(schema.enums().stream().map(s -> new JsonValue(s).withSchemaType("enum"))
+                    .collect(Collectors.toList()));
         } else if (type.equals("string")) {
           if (last.endsWith("color")
                   || last.equals("fill")
                   || last.equals("stroke") || last.equals("background")) {
-            String[] valueSet = {"red", "blue", "green"};
-            for (String pick: valueSet) {
-              values.add(new JsonValue(pick).withSchemaType("string"));
-            }
+            addValues(schemaValues, colors, "string");
           } else if (last.equals("field")) {
 //            values.add(new JsonValue("fieldName").withSchemaType("string"));
           } else if (last.endsWith("font")) {
-            String[] valueSet = {"times", "monaco", "cursive"};
-            for (String pick: valueSet) {
-              values.add(new JsonValue(pick).withSchemaType("string"));
+            addValues(schemaValues, new String[]{"times", "monaco", "cursive"}, "string");
+          } else if (last.equals("value")) {
+            String channel = simplePath.get(simplePath.size() - 2);
+            if (channel.equals("color") || channel.equals("fill")) {
+              addValues(schemaValues, colors, "string");
+            } else if (channel.equals("shape") || channel.equals("fill")) {
+              addValues(schemaValues, new String[]{"square", "cross", "diamond", "triangle-up", "triangle-down", "circle"}, "string");
             }
-          } else if (schema.isEnum()) {
-            values.addAll(schema.enums().stream().map(s -> new JsonValue(s).withSchemaType("enum"))
-                    .collect(Collectors.toList()));
           } else {
-            values.add(new JsonValue("XYZ").withSchemaType(type));
+            schemaValues.add(new JsonValue("XYZ").withSchemaType(type));
           }
         } else if (type.equals("boolean")) {
-          values.add(new JsonValue(true).withSchemaType("boolean"));
-          values.add(new JsonValue(false).withSchemaType("boolean"));
+          schemaValues.add(new JsonValue(true).withSchemaType("boolean"));
+          schemaValues.add(new JsonValue(false).withSchemaType("boolean"));
         } else if (type.equals("number")) {
-          int max = schema.node().has("maximum") ? schema.node().get("maximum").asInt() : 100;
-          int min = schema.node().has("minimum") ? schema.node().get("minimum").asInt() : 0;
-          if (last.endsWith("opacity"))
+          double max = schema.node().has("maximum") ? schema.node().get("maximum").asInt() : 100;
+          double min = schema.node().has("minimum") ? schema.node().get("minimum").asInt() : 0;
+          if (last.endsWith("opacity")) {
             max = 1;
-          int grids = 8;
-          double numberValue = ThreadLocalRandom.current().nextInt(0, grids) * 1.0 / grids * (max - min) + min;
-          if (numberValue > 1 || numberValue < -1)
-            values.add(new JsonValue((int) numberValue).withSchemaType("number"));
-          else
-            values.add(new JsonValue(numberValue).withSchemaType("number"));
+            min = 0;
+          } else if (lastFull.endsWith("Width")) {
+            min = 0.5;
+            max = 10;
+          }
+          double numberValue = ThreadLocalRandom.current().nextDouble(min, max);
+          numberValue = new BigDecimal(Double.toString(numberValue)).setScale(2, RoundingMode.HALF_EVEN).doubleValue();
+          JsonNode fixed = DoubleNode.valueOf(numberValue);
+          schemaValues.add(new JsonValue(fixed).withSchemaType("number"));
+        } else if (type.equals("null")) {
+          schemaValues.add(new JsonValue(NullNode.getInstance()).withSchemaType("null"));
         }
+
+        if (schemaValues.size() == 0)
+          continue;
+        if (sample)
+          values.add(schemaValues.get(ThreadLocalRandom.current().nextInt(schemaValues.size())));
+        else
+          values.addAll(schemaValues);
       }
     }
-    if (values.size() == 0) return values;
-    return Lists.newArrayList(values.get(ThreadLocalRandom.current().nextInt(values.size())));
+    return Lists.newArrayList(values);
   }
 
   public static Set<String> getEnumTypes(String value) {

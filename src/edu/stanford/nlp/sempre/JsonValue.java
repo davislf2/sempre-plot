@@ -29,7 +29,12 @@ public class JsonValue extends Value {
     json = jsonNode;
     inferJsonType();
   }
-  
+
+  public JsonValue(Object jsonObj) {
+    super();
+    json = Json.getMapper().convertValue(jsonObj, JsonNode.class);
+  }
+
   public JsonValue withSchemaType(String type) {
     this.schemaType = type;
     return this;
@@ -37,11 +42,6 @@ public class JsonValue extends Value {
   
   private void inferJsonType() {
     this.jsonType = json.getNodeType().toString().toLowerCase();
-  }
-  
-  public JsonValue(Object jsonObj) {
-    super();
-    json = Json.getMapper().convertValue(jsonObj, JsonNode.class);
   }
 
   @Override
