@@ -11,6 +11,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * A Master manages multiple sessions. Currently, they all share the same model,
@@ -88,7 +90,7 @@ public class Master {
 
   protected Builder builder;
   protected Learner learner;
-  protected HashMap<String, Session> sessions = new LinkedHashMap<>();
+  protected ConcurrentMap<String, Session> sessions = new ConcurrentHashMap<>();
 
   public Master(Builder builder) {
     this.builder = builder;

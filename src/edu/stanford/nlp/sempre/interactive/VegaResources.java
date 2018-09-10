@@ -122,7 +122,7 @@ public class VegaResources {
 
       if (!Strings.isNullOrEmpty(opts.examplesPath)) {
         Stream<String> stream = Files.lines(Paths.get(opts.examplesPath));
-        examples = stream.map(q -> Json.readMapHard(q)).filter(q -> ((List<?>)q.get("q")).get(0).equals("accept"))
+        List<Example> loaded = stream.map(q -> Json.readMapHard(q)).filter(q -> ((List<?>)q.get("q")).get(0).equals("accept"))
           .map(q -> {
             Map<String, Object> jsonObj = ((List<Map<String, Object>>) q.get("q")).get(1);
             String queryId = q.containsKey("queryId")? (String) q.get("queryId"): (String) q.get("sessionId") + q.get("time") + q.get("count");
@@ -134,6 +134,7 @@ public class VegaResources {
                     new JsonValue(jsonObj.get("targetValue")),
                     null);
           }).collect(Collectors.toList());
+        examples = Collections.unmodifiableList(loaded);
       }
     } catch (Exception ex) {
       ex.printStackTrace();

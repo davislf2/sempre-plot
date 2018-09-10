@@ -113,8 +113,8 @@ public class JsonMaster extends Master {
       Example ex = exampleFromUtterance(utt, VegaJsonContextValue.fromClientRequest(kv), session.id);
       builder.parser.parse(builder.params, ex, false);
       stats.size(ex.predDerivations != null ? ex.predDerivations.size() : 0);
-      stats.status(InteractiveUtils.getParseStatus(ex));
-      LogInfo.logs("parse stats: %s", response.stats);
+//      stats.status(InteractiveUtils.getParseStatus(ex));
+//      LogInfo.logs("parse stats: %s", response.stats);
 
       int size = ex.predDerivations.size();
       int amount = size;

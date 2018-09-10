@@ -11,12 +11,7 @@ import java.nio.file.Paths;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
@@ -65,7 +60,7 @@ public class InteractiveServer {
     @Option
     public int maxCandidates = Integer.MAX_VALUE;
     @Option
-    public int maxExecutionTime = 10; // in seconds
+    public int maxExecutionTime = 5; // in seconds
     @Option(gloss="if the query is already in json, then parse it instead of storing an escaped string")
     public boolean isJsonQuery = false;
   }
@@ -260,6 +255,7 @@ public class InteractiveServer {
       try {
         // most exceptions should be handled in InteractiveMaster
         // so the response can be more specific
+//        response = master.processQuery(session, query);
         response = future.get(opts.maxExecutionTime, TimeUnit.SECONDS);
       } catch (Throwable e) {
         e.printStackTrace();
@@ -316,35 +312,42 @@ public class InteractiveServer {
         masterResponse = processQuery(session, query);
       }
 
-      synchronized (responseLogLock) { // write the response log log
-        Map<String, Object> responseMap = null;
+//      synchronized (responseLogLock) { // write the response log log
+//        Map<String, Object> responseMap = null;
         {
-          PrintWriter out = new PrintWriter(new OutputStreamWriter(exchange.getResponseBody()));
           if (masterResponse != null) {
             // Render answer
             Example ex = masterResponse.getExample();
-            responseMap = makeJson(masterResponse);
-            out.println(Json.writeValueAsStringHard(responseMap));
+            String responseString = Json.writeValueAsStringHard(makeJson(masterResponse));
+            try {
+              OutputStream responseStream = exchange.getResponseBody();
+              BufferedWriter out = new BufferedWriter(new OutputStreamWriter(responseStream), 1000000);
+              out.write(responseString);
+              out.close();
+              responseStream.close();
+            } catch (IOException e) {
+              System.out.printf("responseWritingException: ", e.toString());
+              e.printStackTrace();
+            }
           }
-          out.close();
         }
-        Map<String, Object> jsonMap = new LinkedHashMap<>();
-        LocalDateTime responseTime = LocalDateTime.now();
-        // jsonMap.put("responseTime", responseTime.toString());
-        jsonMap.put("time", queryTime.toString());
-        jsonMap.put("ms", String.format("%.3f", java.time.Duration.between(queryTime, responseTime).toNanos() / 1.0e6));
-        jsonMap.put("sessionId", sessionId);
-        if (opts.isJsonQuery)
-          jsonMap.put("q", Json.readValueHard(query, ArrayList.class));
-        else
-          jsonMap.put("q", query);
-        jsonMap.put("lines", responseMap.get("lines"));
-        if (session.isLogging()) {
-          logLine("response.jsonl", Json.writeValueAsStringHard(jsonMap));
-        } else {
-          logLine("response.sandbox.jsonl", Json.writeValueAsStringHard(jsonMap));
-        }
-      }
+//        Map<String, Object> jsonMap = new LinkedHashMap<>();
+//        LocalDateTime responseTime = LocalDateTime.now();
+//        // jsonMap.put("responseTime", responseTime.toString());
+//        jsonMap.put("time", queryTime.toString());
+//        jsonMap.put("ms", String.format("%.3f", java.time.Duration.between(queryTime, responseTime).toNanos() / 1.0e6));
+//        jsonMap.put("sessionId", sessionId);
+//        if (opts.isJsonQuery)
+//          jsonMap.put("q", Json.readValueHard(query, ArrayList.class));
+//        else
+//          jsonMap.put("q", query);
+//        jsonMap.put("lines", responseMap.get("lines"));
+//        if (session.isLogging()) {
+//          logLine("response.jsonl", Json.writeValueAsStringHard(jsonMap));
+//        } else {
+//          logLine("response.sandbox.jsonl", Json.writeValueAsStringHard(jsonMap));
+//        }
+//      }
     }
 
     void logLine(String file, String line) {
@@ -367,17 +370,17 @@ public class InteractiveServer {
   public void run() {
     try {
       String hostname = fig.basic.SysInfoUtils.getHostName();
-      HttpServer server = HttpServer.create(new InetSocketAddress(opts.port), 10);
+      HttpServer server = HttpServer.create(new InetSocketAddress(opts.port), 1024);
       // generous timeout here
-      ExecutorService pool = new ThreadPoolExecutor(opts.numThreads, opts.numThreads, 120, TimeUnit.SECONDS,
-          new LinkedBlockingQueue<Runnable>());
-      // Executors.newFixedThreadPool(opts.numThreads);
+//      ExecutorService pool = new ThreadPoolExecutor(opts.numThreads, opts.numThreads, 0, TimeUnit.SECONDS,
+//          new ArrayBlockingQueue<>(1000000));
+      ExecutorService pool = Executors.newFixedThreadPool(opts.numThreads);
+      LogInfo.begin_threads();
       server.createContext("/", new Handler());
       server.setExecutor(pool);
       server.start();
       LogInfo.logs("JSON Server (%d threads) started at http://%s:%s/sempre", opts.numThreads, hostname, opts.port);
       LogInfo.log("Press Ctrl-D to terminate.");
-      LogInfo.begin_threads();
       while (LogInfo.stdin.readLine() != null) {
       }
       LogInfo.log("Shutting down server...");
